@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>答题结果</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:#f5f5f5;color:#333}
+.score-area{text-align:center;padding:40px 20px}
+.score-area.perfect{background:linear-gradient(180deg,#FFF8E1,#FFE082)}
+.score-area.normal{background:linear-gradient(180deg,#E8F5E9,#A5D6A7)}
+.circle{width:120px;height:120px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 12px}
+.perfect .circle{background:linear-gradient(135deg,#FF6F00,#FF8F00)}
+.normal .circle{background:linear-gradient(135deg,#2E7D32,#43A047)}
+.circle .n{font-size:44px;font-weight:700;color:#fff;line-height:1}
+.circle .u{font-size:14px;color:rgba(255,255,255,.8)}
+.emoji{font-size:32px;margin-bottom:6px}
+.rtitle{font-size:20px;font-weight:600}
+.rsub{font-size:13px;color:#666;margin-top:4px}
+.stats-row{display:flex;gap:8px;padding:0 20px;margin-top:-16px;margin-bottom:20px}
+.stats-row .s{flex:1;background:#fff;border-radius:12px;padding:14px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.s .sn{font-size:26px;font-weight:700}
+.s .sl{font-size:11px;color:#999}
+.sn.grn{color:#4CAF50}.sn.red{color:#f44336}
+
+.detail-wrap{padding:0 20px;margin-bottom:20px}
+.detail-wrap .dh{background:#fff;border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;font-size:14px;font-weight:500;cursor:pointer}
+.di{background:#fff;border-radius:12px;padding:14px;margin-top:8px;border-left:4px solid #4CAF50}
+.di.wrong{border-left-color:#f44336}
+.di .dr{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.di .dt{font-size:14px;line-height:1.5;margin-bottom:6px}
+.di .da{font-size:12px;color:#999}
+.di .da .c{color:#4CAF50;font-weight:600}
+.di .da .w{color:#f44336;font-weight:600}
+
+.poster-wrap{padding:0 20px;margin-bottom:20px;text-align:center}
+.poster-wrap h3{font-size:15px;margin-bottom:10px}
+.poster-wrap img{width:100%;border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,.1);display:block}
+.poster-wrap .tips{font-size:11px;color:#aaa;margin:8px 0}
+.poster-btns{display:flex;gap:8px;margin-top:10px}
+.poster-btns button{flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;cursor:pointer}
+.poster-btns .save{background:#1bcfad;color:#fff}
+.poster-btns .share{background:#fff;border:2px solid #1bcfad;color:#1bcfad}
+.poster-btns button:active{transform:scale(.97)}
+
+.bottom{padding:0 20px 40px}
+.bottom button{width:100%;padding:14px;border:none;border-radius:12px;font-size:16px;background:#1bcfad;color:#fff;cursor:pointer}
+.bottom button:active{transform:scale(.97)}
+
+canvas#pc{display:none}
+</style>
+</head>
+<body>
+<div class="score-area" id="scoreArea">
+  <div class="circle"><span class="n" id="scoreNum">0</span><span class="u">分</span></div>
+  <div class="emoji" id="emoji"></div>
+  <div class="rtitle" id="rtitle"></div>
+  <div class="rsub" id="rsub"></div>
+</div>
+
+<div class="stats-row">
+  <div class="s"><span class="sn" id="totalN">0</span><span class="sl">总题数</span></div>
+  <div class="s"><span class="sn grn" id="rightN">0</span><span class="sl">答对</span></div>
+  <div class="s"><span class="sn red" id="wrongN">0</span><span class="sl">答错</span></div>
+</div>
+
+<div class="detail-wrap">
+  <div class="dh" onclick="toggleDetail()"><span>📋 答题详情</span><span id="dArrow">▶</span></div>
+  <div id="dList" style="display:none"></div>
+</div>
+
+<div class="poster-wrap" id="posterWrap">
+  <h3>🏆 我的荣誉海报</h3>
+  <canvas id="pc" width="375" height="600"></canvas>
+  <img id="posterImg" src="" alt="海报">
+  <p class="tips">长按海报图片保存到相册</p>
+  <div class="poster-btns">
+    <button class="save" onclick="download()">💾 保存</button>
+    <button class="share" onclick="share()">📤 分享</button>
+  </div>
+</div>
+
+<div class="bottom"><button onclick="retry()">再来一次</button></div>
+
+<script>
+var r=JSON.parse(sessionStorage.getItem('_result')||'{}');
+var score=r.score||0, isPerfect=r.isPerfect, total=r.totalNum||0, right=r.rightNum||0, wrong=r.wrongNum||0;
+var setName=r.setName||'', details=r.details||[], perfectPoster=r.perfectPoster||'', normalPoster=r.normalPoster||'';
+
+document.getElementById('scoreNum').textContent=score;
+document.getElementById('scoreArea').className='score-area '+(isPerfect?'perfect':'normal');
+document.getElementById('emoji').textContent=isPerfect?'🎉':'👏';
+document.getElementById('rtitle').textContent=isPerfect?'恭喜满分通关！':'恭喜完成答题！';
+document.getElementById('rsub').textContent=isPerfect?'太厉害了，全部答对！':'继续加油，下次争取满分哦~';
+document.getElementById('totalN').textContent=total;
+document.getElementById('rightN').textContent=right;
+document.getElementById('wrongN').textContent=wrong;
+
+// 答题详情
+var dHTML='';
+details.forEach(function(d,i){
+  dHTML+='<div class="di'+(d.isCorrect?'':' wrong')+'"><div class="dr"><span style="color:#999">第'+(i+1)+'题</span><span style="font-weight:600;color:'+(d.isCorrect?'#4CAF50':'#f44336')+'">'+(d.isCorrect?'✓正确':'✗错误')+'</span></div><div class="dt">'+d.title+'</div><div class="da">正确答案：<span class="c">'+d.correctAnswer+'</span></div>'+(d.isCorrect?'':'<div class="da">你的答案：<span class="w">'+(Array.isArray(d.userAnswer)?d.userAnswer.join(', '):d.userAnswer||'未作答')+'</span></div>')+'</div>';
+});
+document.getElementById('dList').innerHTML=dHTML;
+
+function toggleDetail(){
+  var l=document.getElementById('dList'),a=document.getElementById('dArrow');
+  if(l.style.display==='none'){l.style.display='block';a.textContent='▼'}else{l.style.display='none';a.textContent='▶'}
+}
+
+// 海报
+function genPoster(){
+  var c=document.getElementById('pc'),ctx=c.getContext('2d'),W=375,H=600;
+  var grad=ctx.createLinearGradient(0,0,0,H);
+  if(isPerfect){grad.addColorStop(0,'#FFF8E1');grad.addColorStop(1,'#FFE082')}
+  else{grad.addColorStop(0,'#E8F5E9');grad.addColorStop(1,'#A5D6A7')}
+  ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=isPerfect?'#FFD54F':'#81C784';ctx.globalAlpha=.15;
+  ctx.beginPath();ctx.arc(W-20,-30,130,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(30,H+30,110,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.fillStyle=isPerfect?'#E65100':'#1B5E20';ctx.font='bold 24px sans-serif';ctx.textAlign='center';
+  ctx.fillText(isPerfect?'🎉恭喜满分通关！':'👏恭喜完成答题！',W/2,78);
+  ctx.fillStyle=isPerfect?'#FF6F00':'#2E7D32';ctx.beginPath();ctx.arc(W/2,182,48,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 30px sans-serif';ctx.fillText(score+'',W/2,186);
+  ctx.font='12px sans-serif';ctx.fillText('分',W/2,210);
+  ctx.fillStyle='#333';ctx.font='15px sans-serif';
+  ctx.fillText('题库：'+setName,W/2,265);
+  ctx.fillText('共'+total+'题·答对'+right+'题·答错'+wrong+'题',W/2,295);
+  ctx.fillStyle='#e0e0e0';ctx.fillRect((W-180)/2,316,180,8);
+  ctx.fillStyle=isPerfect?'#FF6F00':'#4CAF50';ctx.fillRect((W-180)/2,316,180*(score/100),8);
+  ctx.fillStyle='#666';ctx.font='13px sans-serif';
+  ctx.fillText(isPerfect?'太厉害了！全部答对！':'继续加油，下次争取满分！',W/2,365);
+  ctx.fillStyle='#aaa';ctx.font='10px sans-serif';
+  ctx.fillText('长按图片保存，分享给你的好友',W/2,500);
+  ctx.fillText('答题助手',W/2,540);
+  document.getElementById('posterImg').src=c.toDataURL('image/png');
+}
+
+function download(){var a=document.createElement('a');a.download='答题海报.png';a.href=document.getElementById('posterImg').src;a.click()}
+function share(){if(navigator.share)navigator.share({title:'答题结果',text:'我在「'+setName+'」中获得了'+score+'分！快来挑战！',url:location.origin});else alert('点击右上角分享')}
+function retry(){sessionStorage.clear();location.href='index.html'}
+
+genPoster();
+</script>
+</body>
+</html>

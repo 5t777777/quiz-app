@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>答题中</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:#f5f5f5;color:#333;min-height:100vh}
+header{position:sticky;top:0;background:#fff;padding:12px 16px;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+header .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px}
+header .name{color:#666} header .idx{color:#999}
+.bar{width:100%;height:5px;background:#eee;border-radius:3px;overflow:hidden}
+.bar .fill{height:100%;background:#1bcfad;border-radius:3px;transition:width .3s}
+.qa{padding:16px}
+.card{background:#fff;border-radius:14px;padding:20px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.tag{display:inline-block;padding:3px 10px;border-radius:5px;font-size:11px;font-weight:500;margin-bottom:12px;background:rgba(27,207,173,0.1);color:#1bcfad}
+.title{font-size:17px;line-height:1.6;font-weight:500;word-break:break-word}
+.opt{display:flex;align-items:center;padding:14px;margin-bottom:8px;border-radius:10px;background:#f9f9f9;border:2px solid transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt:active{transform:scale(.98)}
+.opt.sel{background:rgba(27,207,173,0.05);border-color:#1bcfad}
+.opt .badge{width:34px;height:34px;border-radius:50%;background:#e8e8e8;display:flex;align-items:center;justify-content:center;font-size:13px;color:#666;margin-right:12px;flex-shrink:0}
+.opt.sel .badge{background:#1bcfad;color:#fff}
+.opt .txt{flex:1;font-size:15px;word-break:break-word}
+.opt .chk{width:20px;height:20px;border-radius:4px;border:2px solid #ccc;margin-left:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent;flex-shrink:0}
+.opt.sel .chk{background:#1bcfad;border-color:#1bcfad;color:#fff}
+.nav{display:flex;gap:10px;padding:0 16px 16px}
+.nav button{flex:1;padding:14px;border:none;border-radius:12px;font-size:15px;cursor:pointer}
+.nav .prev{background:#fff;color:#666;border:1px solid #ddd}
+.nav .next{background:#1bcfad;color:#fff;font-weight:600}
+.nav .prev:active,.nav .next:active{transform:scale(.97)}
+.sheet{margin:0 16px 24px;background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.sheet .st{font-size:12px;color:#999;margin-bottom:8px}
+.sheet .grid{display:flex;flex-wrap:wrap;gap:8px}
+.sheet .dot{width:36px;height:36px;border-radius:50%;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#999;cursor:pointer}
+.sheet .dot.done{background:#1bcfad;color:#fff}
+.sheet .dot.cur{box-shadow:0 0 0 3px rgba(27,207,173,0.3)}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 24px;border-radius:20px;font-size:13px;z-index:999;opacity:0;pointer-events:none;transition:opacity .3s}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="row"><span class="name" id="setName">题库</span><span class="idx"><span id="curIdx">1</span>/<span id="totalNum">0</span></span></div>
+  <div class="bar"><div class="fill" id="progressFill" style="width:0%"></div></div>
+</header>
+
+<div id="qArea" class="qa"></div>
+
+<div class="nav">
+  <button class="prev" id="btnPrev" onclick="goPrev()">上一题</button>
+  <button class="next" id="btnNext" onclick="goNext()">下一题</button>
+</div>
+
+<div class="sheet">
+  <div class="st">答题卡（点击跳转）</div>
+  <div class="grid" id="sheetGrid"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+var supabase = window.supabase.createClient(
+  'https://zhfstrwlgrbhudggsesz.supabase.co',
+  'sb_publishable_Q6exosUWFwf1g9Lpzo9ugw_ylZdznuG'
+);
+</script>
+<script>
+var questions=JSON.parse(sessionStorage.getItem('_fullQuestions')||'[]');
+var answers=JSON.parse(sessionStorage.getItem('_answers')||'{}');
+var curIdx=0;
+
+if(!questions.length){document.body.innerHTML='<div style="text-align:center;padding-top:80px"><p>题目数据异常</p><a href="index.html">返回首页</a></div>'}
+
+var quizData=JSON.parse(sessionStorage.getItem('quizData')||'{}');
+document.getElementById('setName').textContent=quizData.setName||'';
+document.getElementById('totalNum').textContent=questions.length;
+
+function renderQ(){
+  var q=questions[curIdx]; if(!q)return;
+  var isMulti=q.type==='multi';
+  var opts=typeof q.options==='string'?JSON.parse(q.options):(q.options||[]);
+  var tn={single:'单选题',multi:'多选题',judge:'判断题'};
+  var saved=answers[curIdx];
+  var selSet=new Set(isMulti?(Array.isArray(saved)?saved:[]):(saved?[saved]:[]));
+
+  var h='<div class="card"><div class="tag">'+(tn[q.type]||'单选题')+'</div><div class="title">'+(curIdx+1)+'. '+q.title+'</div></div>';
+  opts.forEach(function(o,i){
+    var sel=selSet.has(o.code);
+    h+='<div class="opt'+(sel?' sel':'')+'" onclick="pick('+i+',\''+o.code+'\')"><div class="badge">'+o.code+'</div><div class="txt">'+o.content+'</div>';
+    if(isMulti)h+='<div class="chk">✓</div>';
+    h+='</div>';
+  });
+
+  document.getElementById('qArea').innerHTML=h;
+  document.getElementById('curIdx').textContent=curIdx+1;
+  document.getElementById('progressFill').style.width=((curIdx+1)/questions.length*100)+'%';
+  document.getElementById('btnPrev').style.visibility=curIdx===0?'hidden':'visible';
+  document.getElementById('btnNext').textContent=curIdx===questions.length-1?'提交答卷':'下一题';
+  renderSheet();
+}
+
+function pick(i,code){
+  var q=questions[curIdx];
+  var isMulti=q.type==='multi';
+  if(isMulti){
+    var arr=answers[curIdx]; arr=Array.isArray(arr)?arr.slice():[];
+    var p=arr.indexOf(code); p>-1?arr.splice(p,1):arr.push(code);
+    answers[curIdx]=arr;
+  }else{answers[curIdx]=code}
+  sessionStorage.setItem('_answers',JSON.stringify(answers));
+  renderQ();
+}
+
+function goPrev(){if(curIdx>0){curIdx--;renderQ()}}
+function goNext(){
+  var saved=answers[curIdx];
+  var isMulti=questions[curIdx].type==='multi';
+  var has=isMulti?(Array.isArray(saved)&&saved.length>0):!!saved;
+  if(!has){toast('请先选择答案');return}
+  if(curIdx>=questions.length-1){submit();return}
+  curIdx++;renderQ();
+}
+
+function renderSheet(){
+  var h='';
+  questions.forEach(function(q,i){
+    var saved=answers[i];
+    var isMulti=q.type==='multi';
+    var done=isMulti?(Array.isArray(saved)&&saved.length>0):!!saved;
+    var cls='dot'+(i===curIdx?' cur':'')+(done?' done':'');
+    h+='<div class="'+cls+'" onclick="curIdx='+i+';renderQ()">'+(i+1)+'</div>';
+  });
+  document.getElementById('sheetGrid').innerHTML=h;
+}
+
+async function submit(){
+  var unanswered=[];
+  questions.forEach(function(q,i){
+    var saved=answers[i]; var isMulti=q.type==='multi';
+    if(isMulti?(!Array.isArray(saved)||!saved.length):!saved)unanswered.push(i+1);
+  });
+  if(unanswered.length>0){if(!confirm('还有'+unanswered.length+'道题未作答，确定提交？'))return}
+
+  var right=0,wrong=0,details=[];
+  questions.forEach(function(q,i){
+    var ua=answers[i]||'', ca=q.answer||'';
+    var ok=false;
+    if(q.type==='multi'){var u=(Array.isArray(ua)?ua:[]).sort().join(''),c=ca.split('').sort().join('');ok=u===c}
+    else ok=ua===ca;
+    ok?right++:wrong++;
+    details.push({title:q.title,type:q.type,userAnswer:ua,correctAnswer:ca,isCorrect:ok,options:q.options});
+  });
+
+  var total=questions.length,score=Math.round(right/total*100),isPerfect=score===100;
+
+  await supabase.from('quiz_records').insert({
+    set_id:quizData.setId,set_name:quizData.setName,
+    score:score,is_perfect:isPerfect,right_num:right,wrong_num:wrong,total_num:total,details:details
+  });
+
+  sessionStorage.setItem('_result',JSON.stringify({
+    score:score,isPerfect:isPerfect,totalNum:total,rightNum:right,wrongNum:wrong,
+    setName:quizData.setName,perfectPoster:quizData.perfectPoster,normalPoster:quizData.normalPoster,details:details
+  }));
+  location.href='result.html';
+}
+
+function toast(m){var e=document.getElementById('toast');e.textContent=m;e.classList.add('show');setTimeout(function(){e.classList.remove('show')},2000)}
+
+renderQ();
+</script>
+</body>
+</html>

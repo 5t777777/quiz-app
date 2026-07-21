@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理后台 · 答题助手</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:#f0f2f5;color:#333}
+.c{max-width:1000px;margin:0 auto;padding:20px}
+.hd{display:flex;justify-content:space-between;align-items:center;background:#fff;padding:16px 20px;border-radius:12px;margin-bottom:16px}
+.hd h1{font-size:19px}.hd a{font-size:13px;color:#1bcfad;text-decoration:none}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tabs button{padding:10px 18px;border:none;border-radius:10px;font-size:13px;cursor:pointer;background:#fff;color:#666}
+.tabs button.on{background:#1bcfad;color:#fff}
+.panel{display:none}.panel.on{display:block}
+.card{background:#fff;border-radius:14px;padding:20px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.inp,.sel,.txa{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;font-family:inherit}
+.inp:focus,.txa:focus{outline:none;border-color:#1bcfad}
+.txa{min-height:80px;resize:vertical}.sel{background:#fff}
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;cursor:pointer}
+.btn:active{transform:scale(.97)}
+.btn-g{background:#1bcfad;color:#fff}
+.btn-s{background:#fff;color:#333;border:1px solid #ddd}
+.btn-r{background:#e74c3c;color:#fff}
+.btn-xs{padding:4px 12px;font-size:12px}
+.tag{display:inline-block;padding:2px 9px;border-radius:4px;font-size:11px}
+.tag-g{background:rgba(27,207,173,.12);color:#1bcfad}
+.fld{margin-bottom:12px}.fld label{font-size:12px;color:#666;display:block;margin-bottom:3px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.grid .nm{font-size:16px;font-weight:600;margin-bottom:2px}
+.grid .ds{font-size:12px;color:#999;margin-bottom:8px}
+.grid .btns{display:flex;gap:6px;flex-wrap:wrap}
+
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{background:#fafafa;color:#666;font-weight:500;font-size:11px}
+.tbl th,.tbl td{padding:10px 12px;text-align:left;font-size:13px;border-bottom:1px solid #f0f0f0;vertical-align:top}
+
+.rec{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #f0f0f0}
+.rec:last-child{border:none}
+.rec .sn{font-size:26px;font-weight:700}
+.rec .sn.pf{color:#FF6F00}.rec .sn:not(.pf){color:#4CAF50}
+
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:flex-end;justify-content:center}
+.modal.show{display:flex}
+.modal .box{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;padding:24px}
+.modal .box h2{font-size:17px;margin-bottom:14px}
+.modal .acts{display:flex;gap:10px;margin-top:18px}
+.modal .acts .btn{flex:1;padding:12px;justify-content:center}
+
+.up{border:2px dashed #ddd;border-radius:10px;padding:16px;text-align:center;cursor:pointer}
+.up:hover{border-color:#1bcfad}
+.up img{max-width:100%;max-height:100px;border-radius:8px}
+.up span{font-size:12px;color:#999}
+
+.csvh{font-size:12px;color:#999;line-height:1.6;background:#fafafa;padding:10px;border-radius:8px;margin-bottom:10px}
+.csvh code{background:#eee;padding:1px 4px;border-radius:3px;font-size:11px}
+.csva{width:100%;height:140px;font-family:monospace;font-size:12px}
+
+.orow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.orow .cd{width:26px;font-weight:600;font-size:14px;color:#999;text-align:center;flex-shrink:0}
+.orow label{font-size:11px;white-space:nowrap;display:flex;align-items:center;gap:3px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="c">
+  <div class="hd"><h1>⚙️ 管理后台</h1><a href="index.html">🏠 首页</a></div>
+  <div class="tabs">
+    <button class="on" data-panel="sets">📦 套装管理</button>
+    <button data-panel="questions">📝 题目管理</button>
+    <button data-panel="records">📊 答题记录</button>
+  </div>
+
+  <!-- 套装管理 -->
+  <div class="panel on" id="panel-sets">
+    <div class="row"><button class="btn btn-g" onclick="openSet()">+ 创建新套装</button></div>
+    <div class="grid" id="setGrid"></div>
+  </div>
+
+  <!-- 题目管理 -->
+  <div class="panel" id="panel-questions">
+    <div class="card">
+      <div class="row">
+        <select class="sel" id="qSetFilter" onchange="loadQ()" style="max-width:220px"><option value="">选择套装</option></select>
+        <button class="btn btn-g" onclick="openQ()">+ 逐条添加</button>
+        <button class="btn btn-s" onclick="openCSV()">📤 CSV导入</button>
+      </div>
+      <table class="tbl"><thead><tr><th width="40%">题目</th><th width="10%">题型</th><th width="10%">答案</th><th width="15%">操作</th></tr></thead><tbody id="qBody"><tr><td colspan="4" style="color:#999;text-align:center;padding:30px">请选择套装</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- 记录 -->
+  <div class="panel" id="panel-records">
+    <div class="card" id="recordList" style="max-height:70vh;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- 套装弹窗 -->
+<div class="modal" id="setMod">
+  <div class="box">
+    <h2 id="setTitle">创建新套装</h2>
+    <input type="hidden" id="setId">
+    <div class="fld"><label>套装名称 *</label><input class="inp" id="setName" placeholder="例：2024期中考试"></div>
+    <div class="fld"><label>描述</label><textarea class="txa" id="setDesc" placeholder="可选"></textarea></div>
+    <div class="fld"><label>🏆 满分海报（可选）</label>
+      <div class="up" onclick="document.getElementById('pfFile').click()"><img id="pfPreview" src="" style="display:none"><span id="pfPholder">点击上传</span></div>
+      <input type="file" id="pfFile" accept="image/*" style="display:none" onchange="uploadFile('pf')">
+      <input type="hidden" id="pfUrl"></div>
+    <div class="fld"><label>👏 鼓励海报（可选）</label>
+      <div class="up" onclick="document.getElementById('nfFile').click()"><img id="nfPreview" src="" style="display:none"><span id="nfPholder">点击上传</span></div>
+      <input type="file" id="nfFile" accept="image/*" style="display:none" onchange="uploadFile('nf')">
+      <input type="hidden" id="nfUrl"></div>
+    <div class="acts"><button class="btn btn-s" onclick="closeMod('setMod')">取消</button><button class="btn btn-g" onclick="saveSet()">保存</button></div>
+  </div>
+</div>
+
+<!-- 题目弹窗 -->
+<div class="modal" id="qMod">
+  <div class="box">
+    <h2 id="qTitle">添加题目</h2>
+    <input type="hidden" id="qId">
+    <div class="fld"><label>题型</label><select class="sel" id="qType" onchange="makeOpts()"><option value="single">单选题</option><option value="multi">多选题</option><option value="judge">判断题</option></select></div>
+    <div class="fld"><label>题目 *</label><textarea class="txa" id="qTitleText" placeholder="请输入题目"></textarea></div>
+    <div class="fld"><label>选项（勾选=正确答案）</label><div id="qOpts"></div></div>
+    <div class="acts"><button class="btn btn-s" onclick="closeMod('qMod')">取消</button><button class="btn btn-g" onclick="saveQ()">保存</button></div>
+  </div>
+</div>
+
+<!-- CSV弹窗 -->
+<div class="modal" id="csvMod">
+  <div class="box">
+    <h2>📤 CSV批量导入</h2>
+    <div class="csvh">每行一题：<code>题目,题型,答案,选项A,选项B,选项C,选项D</code><br>题型写<code>单选/多选/判断</code>，答案写<code>B</code>或<code>AB</code></div>
+    <textarea class="txa csva" id="csvText" placeholder="微信是哪年上线的？,单选,B,2012年,2011年,2013年,2014年"></textarea>
+    <div class="acts"><button class="btn btn-s" onclick="closeMod('csvMod')">取消</button><button class="btn btn-g" onclick="doCSV()">导入</button></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+var supabase=window.supabase.createClient('https://zhfstrwlgrbhudggsesz.supabase.co','sb_publishable_Q6exosUWFwf1g9Lpzo9ugw_ylZdznuG');
+</script>
+<script>
+// tabs
+document.querySelectorAll('.tabs button').forEach(function(b){
+  b.onclick=function(){
+    document.querySelectorAll('.tabs button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on');
+    var t=b.dataset.panel;
+    document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on')});
+    document.getElementById('panel-'+t).classList.add('on');
+    if(t==='sets')loadSets();
+    if(t==='questions'){loadSetOpts().then(function(){loadQ()})}
+    if(t==='records')loadRecs();
+  }
+});
+
+function alert(m){window.alert(m)}
+
+// ===== 套装 =====
+async function loadSets(){
+  var r=await supabase.from('question_sets').select('*').order('created_at',{ascending:false});
+  document.getElementById('setGrid').innerHTML=(r.data||[]).map(function(s){
+    return '<div class="card"><div class="nm">'+s.name+'</div><div class="ds">'+(s.description||'')+(s.perfect_poster_url?' · 🏆满分海报':'')+(s.normal_poster_url?' · 👏鼓励海报':'')+'</div><div class="btns"><button class="btn btn-xs btn-s" onclick="editSet(\''+s.id+'\')">编辑</button><button class="btn btn-xs btn-r" onclick="delSet(\''+s.id+'\')">删除</button></div></div>';
+  }).join('')||'<p style="color:#999;text-align:center;padding:40px">暂无套装</p>';
+}
+
+function openSet(id){
+  if(id){
+    document.getElementById('setTitle').textContent='编辑套装';
+    supabase.from('question_sets').select('*').eq('id',id).single().then(function(r){
+      var d=r.data; if(!d)return;
+      document.getElementById('setId').value=d.id;
+      document.getElementById('setName').value=d.name;
+      document.getElementById('setDesc').value=d.description||'';
+      document.getElementById('pfUrl').value=d.perfect_poster_url||'';
+      document.getElementById('nfUrl').value=d.normal_poster_url||'';
+      if(d.perfect_poster_url)showPrev('pf',d.perfect_poster_url);else hidePrev('pf');
+      if(d.normal_poster_url)showPrev('nf',d.normal_poster_url);else hidePrev('nf');
+    });
+  }else{
+    document.getElementById('setTitle').textContent='创建新套装';
+    document.getElementById('setId').value='';
+    document.getElementById('setName').value='';
+    document.getElementById('setDesc').value='';
+    document.getElementById('pfUrl').value=''; document.getElementById('nfUrl').value='';
+    hidePrev('pf');hidePrev('nf');
+  }
+  document.getElementById('setMod').classList.add('show');
+}
+
+function editSet(id){openSet(id)}
+
+function closeMod(id){document.getElementById(id).classList.remove('show')}
+
+async function uploadFile(t){
+  var f=document.getElementById(t+'File').files[0]; if(!f)return;
+  try{
+    var p='posters/'+Date.now()+'_'+f.name;
+    var u=await supabase.storage.from('posters').upload(p,f);
+    if(u.error){alert('上传失败:'+u.error.message);return}
+    var r=supabase.storage.from('posters').getPublicUrl(p);
+    document.getElementById(t+'Url').value=r.data.publicUrl;
+    showPrev(t,r.data.publicUrl);
+  }catch(e){alert('上传出错:'+(e.message||JSON.stringify(e)))}
+}
+
+function showPrev(t,u){var i=document.getElementById(t+'Preview');var h=document.getElementById(t+'Pholder');i.src=u;i.style.display='block';h.style.display='none'}
+function hidePrev(t){var i=document.getElementById(t+'Preview');var h=document.getElementById(t+'Pholder');i.src='';i.style.display='none';h.style.display='block'}
+
+async function saveSet(){
+  var id=document.getElementById('setId').value;
+  var nm=document.getElementById('setName').value.trim();
+  if(!nm){alert('请输入套装名称');return}
+  var d={name:nm,description:document.getElementById('setDesc').value.trim(),perfect_poster_url:document.getElementById('pfUrl').value.trim(),normal_poster_url:document.getElementById('nfUrl').value.trim()};
+  var r; if(id){r=await supabase.from('question_sets').update(d).eq('id',id)}else{r=await supabase.from('question_sets').insert(d).select()}
+  if(r.error){alert('保存失败:'+r.error.message);return}
+  closeMod('setMod');loadSets();
+}
+
+async function delSet(id){
+  if(!confirm('删除套装同时删除所有题目，确定？'))return;
+  await supabase.from('questions').delete().eq('set_id',id);
+  await supabase.from('question_sets').delete().eq('id',id);
+  loadSets();
+}
+
+// ===== 题目 =====
+async function loadSetOpts(){
+  var r=await supabase.from('question_sets').select('id,name');
+  document.getElementById('qSetFilter').innerHTML='<option value="">选择套装</option>'+(r.data||[]).map(function(s){return'<option value="'+s.id+'">'+s.name+'</option>'}).join('');
+}
+
+async function loadQ(){
+  var sid=document.getElementById('qSetFilter').value;
+  if(!sid){document.getElementById('qBody').innerHTML='<tr><td colspan="4" style="color:#999;text-align:center;padding:30px">请选择套装</td></tr>';return}
+  var r=await supabase.from('questions').select('*').eq('set_id',sid).order('created_at');
+  var tn={single:'单选',multi:'多选',judge:'判断'};
+  document.getElementById('qBody').innerHTML=(r.data||[]).map(function(q){
+    return'<tr><td>'+q.title+'</td><td><span class="tag tag-g">'+tn[q.type]+'</span></td><td><strong>'+q.answer+'</strong></td><td><button class="btn btn-xs btn-s" onclick="editQ(\''+q.id+'\')">编辑</button> <button class="btn btn-xs btn-r" onclick="delQ(\''+q.id+'\')">删除</button></td></tr>';
+  }).join('')||'<tr><td colspan="4" style="color:#999;text-align:center;padding:30px">暂无题目</td></tr>';
+}
+
+function makeOpts(t,v){
+  t=t||document.getElementById('qType').value;
+  var codes=t==='judge'?['A','B']:['A','B','C','D'];
+  var labels=t==='judge'?['正确','错误']:codes;
+  var h='';
+  codes.forEach(function(c,i){
+    var cont='',chk='';
+    if(v&&v[i]){cont=v[i].content||'';chk=v[i].value==='1'?'checked':''}
+    h+='<div class="orow"><div class="cd">'+c+'</div><input class="inp oc" data-code="'+c+'" placeholder="'+labels[i]+'" value="'+cont+'"><label><input type="'+(t==='multi'?'checkbox':'radio')+'" name="optC" class="ox" data-code="'+c+'" '+chk+'>正确</label></div>';
+  });
+  document.getElementById('qOpts').innerHTML=h;
+}
+
+function openQ(id){
+  if(id){
+    document.getElementById('qTitle').textContent='编辑题目';
+    supabase.from('questions').select('*').eq('id',id).single().then(function(r){
+      var q=r.data; if(!q)return;
+      document.getElementById('qId').value=q.id;
+      document.getElementById('qTitleText').value=q.title;
+      document.getElementById('qType').value=q.type;
+      var opts=typeof q.options==='string'?JSON.parse(q.options):(q.options||[]);
+      makeOpts(q.type,opts);
+    });
+  }else{
+    document.getElementById('qTitle').textContent='添加题目';
+    document.getElementById('qId').value='';
+    document.getElementById('qTitleText').value='';
+    document.getElementById('qType').value='single';
+    makeOpts('single');
+  }
+  document.getElementById('qMod').classList.add('show');
+}
+
+function editQ(id){openQ(id)}
+
+async function saveQ(){
+  var id=document.getElementById('qId').value;
+  var title=document.getElementById('qTitleText').value.trim();
+  var type=document.getElementById('qType').value;
+  var sid=document.getElementById('qSetFilter').value;
+  if(!title||!sid){alert('请填写题目并选择套装');return}
+  var conts=document.querySelectorAll('.oc'),checks=document.querySelectorAll('.ox');
+  var opts=[],ans=[];
+  conts.forEach(function(inp,i){
+    var code=inp.dataset.code,checked=checks[i]?checks[i].checked:false;
+    opts.push({code:code,content:inp.value.trim(),value:checked?'1':'0'});
+    if(checked)ans.push(code);
+  });
+  if(!ans.length){alert('请选择正确答案');return}
+  var d={set_id:sid,title:title,type:type,options:opts,answer:ans.join('')};
+  var r;if(id){r=await supabase.from('questions').update(d).eq('id',id)}else{r=await supabase.from('questions').insert(d)}
+  if(r.error){alert('保存失败:'+r.error.message);return}
+  closeMod('qMod');loadQ();loadSets();
+}
+
+async function delQ(id){
+  if(!confirm('确认删除？'))return;
+  await supabase.from('questions').delete().eq('id',id);
+  loadQ();loadSets();
+}
+
+// ===== CSV =====
+function openCSV(){
+  if(!document.getElementById('qSetFilter').value){alert('请先选择套装');return}
+  document.getElementById('csvMod').classList.add('show');
+}
+
+async function doCSV(){
+  var txt=document.getElementById('csvText').value.trim(); if(!txt){alert('请粘贴CSV内容');return}
+  var sid=document.getElementById('qSetFilter').value;
+  var lines=txt.split('\n').filter(function(l){return l.trim()});
+  var rows=[];
+  lines.forEach(function(line){
+    var p=parseCSV(line); if(p.length<4)return;
+    var title=p[0],ts=p[1],ans=p[2],type='single';
+    if(ts.indexOf('多')>-1)type='multi'; else if(ts.indexOf('判断')>-1)type='judge';
+    var codes=type==='judge'?['A','B']:['A','B','C','D'];
+    var opts=codes.map(function(c,i){return{code:c,content:(p[3+i]||'').trim(),value:ans.trim().indexOf(c)>-1?'1':'0'}});
+    rows.push({set_id:sid,title:title.trim(),type:type,options:opts,answer:ans.trim()});
+  });
+  if(!rows.length){alert('未解析到有效题目');return}
+  var r=await supabase.from('questions').insert(rows);
+  if(r.error){alert('导入失败:'+r.error.message);return}
+  alert('成功导入'+rows.length+'道题');closeMod('csvMod');loadQ();loadSets();
+}
+
+function parseCSV(l){var r=[],c='',q=false;for(var i=0;i<l.length;i++){var ch=l[i];if(ch==='"'){q=!q}else if(ch===','&&!q){r.push(c);c=''}else{c+=ch}}r.push(c);return r}
+
+// ===== 记录 =====
+async function loadRecs(){
+  var r=await supabase.from('quiz_records').select('*').order('created_at',{ascending:false}).limit(50);
+  document.getElementById('recordList').innerHTML=(r.data||[]).map(function(rc){
+    return'<div class="rec"><div><div style="font-weight:600">'+rc.set_name+'</div><div style="font-size:11px;color:#999">'+new Date(rc.created_at).toLocaleString()+' · '+rc.right_num+'/'+rc.total_num+'正确</div></div><div class="sn'+(rc.is_perfect?' pf':'')+'">'+rc.score+'</div></div>';
+  }).join('')||'<p style="color:#999;text-align:center;padding:30px">暂无记录</p>';
+}
+
+loadSets();loadSetOpts();
+</script>
+</body>
+</html>
