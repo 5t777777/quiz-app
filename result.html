@@ -88,6 +88,11 @@ var r=JSON.parse(sessionStorage.getItem('_result')||'{}');
 var score=r.score||0, isPerfect=r.isPerfect, total=r.totalNum||0, right=r.rightNum||0, wrong=r.wrongNum||0;
 var setName=r.setName||'', details=r.details||[], perfectPoster=r.perfectPoster||'', normalPoster=r.normalPoster||'';
 
+// 防止直接访问结果页或通过浏览器后退返回
+if(!r.score && r.totalNum===undefined){
+  location.replace('index.html');
+}
+
 document.getElementById('scoreNum').textContent=score;
 document.getElementById('scoreArea').className='score-area '+(isPerfect?'perfect':'normal');
 document.getElementById('emoji').textContent=isPerfect?'🎉':'👏';

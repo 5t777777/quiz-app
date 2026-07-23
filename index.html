@@ -19,14 +19,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .btn{display:block;width:100%;padding:16px;border:none;border-radius:14px;font-size:17px;cursor:pointer;text-align:center}
 .btn:active{transform:scale(0.97)}
 .btn-big{background:linear-gradient(135deg,#1bcfad,#17b899);color:#fff;font-weight:600;font-size:18px}
-.qr-box{background:#fff;border-radius:14px;padding:24px 20px;text-align:center;margin:0 20px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
-.qr-box h3{font-size:15px;color:#333;margin-bottom:14px}
-.qr-box canvas{margin:0 auto;display:block;border:6px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);border-radius:12px}
-.qr-box .tip{font-size:12px;color:#999;margin-top:10px}
-.qr-box .link-row{display:flex;gap:6px;margin-top:10px;background:#f8f8f8;border-radius:8px;padding:6px}
-.qr-box .link-row input{flex:1;border:none;background:transparent;font-size:11px;color:#666;text-align:center;outline:none}
-.qr-box .link-row button{padding:6px 14px;background:#1bcfad;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap}
-.qr-box .link-row button:active{transform:scale(0.97)}
 .admin-link{text-align:center;padding-bottom:40px}
 .admin-link a{font-size:12px;color:#bbb;text-decoration:none}
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 24px;border-radius:20px;font-size:13px;z-index:999;opacity:0;pointer-events:none;transition:opacity .3s}
@@ -49,16 +41,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
   <button class="btn btn-big" onclick="startQuiz()">📋 开始答题（随机分配题库）</button>
 </div>
 
-<div class="qr-box">
-  <h3>📱 微信扫码答题</h3>
-  <canvas id="qrcode"></canvas>
-  <p class="tip">打开微信 → 扫一扫 → 扫描二维码</p>
-  <div class="link-row">
-    <input id="shareUrl" value="" readonly onclick="this.select()">
-    <button onclick="copyUrl()">复制链接</button>
-  </div>
-</div>
-
 <div class="admin-link">
   <a href="admin.html">⚙️ 管理员入口</a>
 </div>
@@ -72,29 +54,7 @@ var supabase = window.supabase.createClient(
   'sb_publishable_Q6exosUWFwf1g9Lpzo9ugw_ylZdznuG'
 );
 </script>
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script>
-var pageUrl = location.href;
-document.getElementById('shareUrl').value = pageUrl;
-
-// 生成二维码
-try {
-  new QRCode(document.getElementById('qrcode'),{
-    text: pageUrl, width: 180, height: 180, colorDark: '#333', colorLight: '#fff'
-  });
-} catch(e) {
-  document.getElementById('qrcode').parentNode.innerHTML += '<p style="color:red;font-size:12px">二维码加载失败，请直接复制链接分享</p>';
-}
-
-function copyUrl() {
-  var inp = document.getElementById('shareUrl');
-  inp.select();
-  document.execCommand('copy');
-  // 现代浏览器兼容
-  navigator.clipboard.writeText(pageUrl).then(function(){}, function(){});
-  toast('链接已复制！发送给微信好友即可');
-}
-
 async function loadStats(){
   var sr = await supabase.from('question_sets').select('*',{count:'exact',head:true});
   var qr = await supabase.from('questions').select('*',{count:'exact',head:true});

@@ -67,6 +67,11 @@ var supabase = window.supabase.createClient(
 );
 </script>
 <script>
+// 防止提交后返回修改
+if(sessionStorage.getItem('_submitted')==='1'){
+  location.replace('result.html');
+}
+
 var questions=JSON.parse(sessionStorage.getItem('_fullQuestions')||'[]');
 var answers=JSON.parse(sessionStorage.getItem('_answers')||'{}');
 var curIdx=0;
@@ -164,10 +169,18 @@ async function submit(){
     score:score,isPerfect:isPerfect,totalNum:total,rightNum:right,wrongNum:wrong,
     setName:quizData.setName,perfectPoster:quizData.perfectPoster,normalPoster:quizData.normalPoster,details:details
   }));
+  sessionStorage.setItem('_submitted','1');
   location.href='result.html';
 }
 
 function toast(m){var e=document.getElementById('toast');e.textContent=m;e.classList.add('show');setTimeout(function(){e.classList.remove('show')},2000)}
+
+// 阻止通过浏览器后退返回答题
+window.addEventListener('pageshow',function(e){
+  if(e.persisted && sessionStorage.getItem('_submitted')==='1'){
+    location.replace('result.html');
+  }
+});
 
 renderQ();
 </script>
