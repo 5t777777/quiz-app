@@ -93,7 +93,9 @@ function renderQ(){
   var h='<div class="card"><div class="tag">'+(tn[q.type]||'单选题')+'</div><div class="title">'+(curIdx+1)+'. '+q.title+'</div></div>';
   opts.forEach(function(o,i){
     var sel=selSet.has(o.code);
-    h+='<div class="opt'+(sel?' sel':'')+'" onclick="pick('+i+',\''+o.code+'\')"><div class="badge">'+o.code+'</div><div class="txt">'+o.content+'</div>';
+    var badgeText=o.code;
+    if(q.type==='judge')badgeText=o.code==='A'?'✓':'✗';
+    h+='<div class="opt'+(sel?' sel':'')+'" onclick="pick('+i+',\''+o.code+'\')"><div class="badge">'+badgeText+'</div><div class="txt">'+o.content+'</div>';
     if(isMulti)h+='<div class="chk">✓</div>';
     h+='</div>';
   });

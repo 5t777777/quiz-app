@@ -105,7 +105,13 @@ document.getElementById('wrongN').textContent=wrong;
 // 答题详情
 var dHTML='';
 details.forEach(function(d,i){
-  dHTML+='<div class="di'+(d.isCorrect?'':' wrong')+'"><div class="dr"><span style="color:#999">第'+(i+1)+'题</span><span style="font-weight:600;color:'+(d.isCorrect?'#4CAF50':'#f44336')+'">'+(d.isCorrect?'✓正确':'✗错误')+'</span></div><div class="dt">'+d.title+'</div><div class="da">正确答案：<span class="c">'+d.correctAnswer+'</span></div>'+(d.isCorrect?'':'<div class="da">你的答案：<span class="w">'+(Array.isArray(d.userAnswer)?d.userAnswer.join(', '):d.userAnswer||'未作答')+'</span></div>')+'</div>';
+  var correctDisplay=d.correctAnswer;
+  var userDisplay=Array.isArray(d.userAnswer)?d.userAnswer.join(', '):d.userAnswer||'未作答';
+  if(d.type==='judge'){
+    correctDisplay=d.correctAnswer==='A'?'正确':'错误';
+    userDisplay=d.userAnswer==='A'?'正确':(d.userAnswer==='B'?'错误':userDisplay);
+  }
+  dHTML+='<div class="di'+(d.isCorrect?'':' wrong')+'"><div class="dr"><span style="color:#999">第'+(i+1)+'题</span><span style="font-weight:600;color:'+(d.isCorrect?'#4CAF50':'#f44336')+'">'+(d.isCorrect?'✓正确':'✗错误')+'</span></div><div class="dt">'+d.title+'</div><div class="da">正确答案：<span class="c">'+correctDisplay+'</span></div>'+(d.isCorrect?'':'<div class="da">你的答案：<span class="w">'+userDisplay+'</span></div>')+'</div>';
 });
 document.getElementById('dList').innerHTML=dHTML;
 
