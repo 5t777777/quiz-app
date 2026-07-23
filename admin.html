@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>管理后台 · 答题助手</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -165,6 +168,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 // ===== 登录验证 =====
 var ADMIN_PWD = 'admin888';
 
+// 强制每次页面显示时都检查登录状态
+(function(){
+  // 隐藏管理内容
+  document.getElementById('adminContent').style.display='none';
+  // 显示登录遮罩
+  document.getElementById('loginOverlay').style.display='flex';
+
+  // 监听 bfcache 恢复 — 从浏览器后退恢复时重新锁定
+  window.addEventListener('pageshow', function(e){
+    if(e.persisted){
+      // bfcache 恢复，强制重新锁定
+      document.getElementById('adminContent').style.display='none';
+      document.getElementById('loginOverlay').style.display='flex';
+      document.getElementById('loginPwd').value='';
+      document.getElementById('loginErr').textContent='';
+    }
+  });
+})();
+
 function doLogin(){
   var pwd = document.getElementById('loginPwd').value.trim();
   if(!pwd){document.getElementById('loginErr').textContent='请输入密码';return}
@@ -172,9 +194,10 @@ function doLogin(){
   document.getElementById('loginOverlay').style.display='none';
   document.getElementById('adminContent').style.display='';
   document.getElementById('loginPwd').value='';
+  document.getElementById('loginErr').textContent='';
+  // 首次登录时初始化数据
+  if(!window._initDone){window._initDone=true;loadSets();loadSetOpts();}
 }
-
-// 每次进入都必须登录，不做记住状态
 
 // ===== Supabase 初始化 =====
 var supabase = window.supabase.createClient(
@@ -389,7 +412,8 @@ async function loadRecs(){
   }).join('')||'<p style="color:#999;text-align:center;padding:30px">暂无记录</p>';
 }
 
-loadSets();loadSetOpts();
+
+
 </script>
 </body>
 </html>
