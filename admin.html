@@ -62,10 +62,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .orow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .orow .cd{width:26px;font-weight:600;font-size:14px;color:#999;text-align:center;flex-shrink:0}
 .orow label{font-size:11px;white-space:nowrap;display:flex;align-items:center;gap:3px;cursor:pointer}
+
+/* 登录遮罩 */
+.login-overlay{position:fixed;inset:0;background:#f0f2f5;z-index:999;display:flex;align-items:center;justify-content:center}
+.login-box{background:#fff;border-radius:16px;padding:40px 28px;width:320px;box-shadow:0 4px 20px rgba(0,0,0,0.08);text-align:center}
+.login-box h2{font-size:20px;margin-bottom:4px}
+.login-box .lsub{font-size:12px;color:#999;margin-bottom:20px}
+.login-box .lrow{margin-bottom:14px;text-align:left}
+.login-box .lrow label{font-size:12px;color:#666;display:block;margin-bottom:4px}
+.login-box .lrow input{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px}
+.login-box .lrow input:focus{outline:none;border-color:#1bcfad}
+.login-box .lbtn{width:100%;padding:12px;background:#1bcfad;color:#fff;border:none;border-radius:10px;font-size:15px;cursor:pointer;margin-top:4px}
+.login-box .lerr{color:#e74c3c;font-size:12px;margin-top:8px;min-height:18px}
 </style>
 </head>
 <body>
-<div class="c">
+<!-- 登录验证 -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>🔐 管理后台</h2>
+    <p class="lsub">请输入管理员密码</p>
+    <div class="lrow"><label>密码</label><input type="password" id="loginPwd" placeholder="请输入管理密码" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="lbtn" onclick="doLogin()">登 录</button>
+    <div class="lerr" id="loginErr"></div>
+  </div>
+</div>
+
+<div class="c" id="adminContent" style="display:none">
   <div class="hd"><h1>⚙️ 管理后台</h1><a href="index.html">🏠 首页</a></div>
   <div class="tabs">
     <button class="on" data-panel="sets">📦 套装管理</button>
@@ -104,12 +127,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
     <input type="hidden" id="setId">
     <div class="fld"><label>套装名称 *</label><input class="inp" id="setName" placeholder="例：2024期中考试"></div>
     <div class="fld"><label>描述</label><textarea class="txa" id="setDesc" placeholder="可选"></textarea></div>
-    <div class="fld"><label>🏆 满分海报（可选）</label>
-      <div class="up" onclick="document.getElementById('pfFile').click()"><img id="pfPreview" src="" style="display:none"><span id="pfPholder">点击上传</span></div>
+    <div class="fld"><label>🏆 满分海报（可选 · 图片转存数据库）</label>
+      <div class="up" onclick="document.getElementById('pfFile').click()"><img id="pfPreview" src="" style="display:none"><span id="pfPholder">点击上传图片</span></div>
       <input type="file" id="pfFile" accept="image/*" style="display:none" onchange="uploadFile('pf')">
       <input type="hidden" id="pfUrl"></div>
-    <div class="fld"><label>👏 鼓励海报（可选）</label>
-      <div class="up" onclick="document.getElementById('nfFile').click()"><img id="nfPreview" src="" style="display:none"><span id="nfPholder">点击上传</span></div>
+    <div class="fld"><label>👏 鼓励海报（可选 · 图片转存数据库）</label>
+      <div class="up" onclick="document.getElementById('nfFile').click()"><img id="nfPreview" src="" style="display:none"><span id="nfPholder">点击上传图片</span></div>
       <input type="file" id="nfFile" accept="image/*" style="display:none" onchange="uploadFile('nf')">
       <input type="hidden" id="nfUrl"></div>
     <div class="acts"><button class="btn btn-s" onclick="closeMod('setMod')">取消</button><button class="btn btn-g" onclick="saveSet()">保存</button></div>
@@ -132,18 +155,39 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 <div class="modal" id="csvMod">
   <div class="box">
     <h2>📤 CSV批量导入</h2>
-    <div class="csvh">每行一题：<code>题目,题型,答案,选项A,选项B,选项C,选项D</code><br>题型写<code>单选/多选/判断</code>，答案写<code>B</code>或<code>AB</code></div>
+    <div class="csvh">每行一题：<code>题目,题型,答案,选项A,选项B,选项C,选项D</code><br>题型写<code>单选/多选/判断</code>，答案写<code>B</code>或<code>AB</code><br>举例：<code>微信是哪年上线的？,单选,B,2012年,2011年,2013年,2014年</code></div>
     <textarea class="txa csva" id="csvText" placeholder="微信是哪年上线的？,单选,B,2012年,2011年,2013年,2014年"></textarea>
     <div class="acts"><button class="btn btn-s" onclick="closeMod('csvMod')">取消</button><button class="btn btn-g" onclick="doCSV()">导入</button></div>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-var supabase=window.supabase.createClient('https://zhfstrwlgrbhudggsesz.supabase.co','sb_publishable_Q6exosUWFwf1g9Lpzo9ugw_ylZdznuG');
-</script>
-<script>
-// tabs
+// ===== 登录验证 =====
+var ADMIN_PWD = 'admin888';
+
+function doLogin(){
+  var pwd = document.getElementById('loginPwd').value.trim();
+  if(!pwd){document.getElementById('loginErr').textContent='请输入密码';return}
+  if(pwd !== ADMIN_PWD){document.getElementById('loginErr').textContent='密码错误，请重试';return}
+  sessionStorage.setItem('_admin_login','1');
+  document.getElementById('loginOverlay').style.display='none';
+  document.getElementById('adminContent').style.display='';
+  document.getElementById('loginPwd').value='';
+}
+
+// 检查是否已登录（本标签页有效期内）
+if(sessionStorage.getItem('_admin_login')==='1'){
+  document.getElementById('loginOverlay').style.display='none';
+  document.getElementById('adminContent').style.display='';
+}
+
+// ===== Supabase 初始化 =====
+var supabase = window.supabase.createClient(
+  'https://zhfstrwlgrbhudggsesz.supabase.co',
+  'sb_publishable_Q6exosUWFwf1g9Lpzo9ugw_ylZdznuG'
+);
+
+// ===== Tabs =====
 document.querySelectorAll('.tabs button').forEach(function(b){
   b.onclick=function(){
     document.querySelectorAll('.tabs button').forEach(function(x){x.classList.remove('on')});
@@ -192,19 +236,19 @@ function openSet(id){
 }
 
 function editSet(id){openSet(id)}
-
 function closeMod(id){document.getElementById(id).classList.remove('show')}
 
-async function uploadFile(t){
+// 图片上传：转 Base64 直接存入数据库，不需要 Supabase Storage
+function uploadFile(t){
   var f=document.getElementById(t+'File').files[0]; if(!f)return;
-  try{
-    var p='posters/'+Date.now()+'_'+f.name;
-    var u=await supabase.storage.from('posters').upload(p,f);
-    if(u.error){alert('上传失败:'+u.error.message);return}
-    var r=supabase.storage.from('posters').getPublicUrl(p);
-    document.getElementById(t+'Url').value=r.data.publicUrl;
-    showPrev(t,r.data.publicUrl);
-  }catch(e){alert('上传出错:'+(e.message||JSON.stringify(e)))}
+  if(f.size > 800000){alert('图片不能超过 800KB，建议压缩后再上传');return}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    document.getElementById(t+'Url').value=e.target.result;
+    showPrev(t,e.target.result);
+  };
+  reader.onerror=function(){alert('图片读取失败，请重试')};
+  reader.readAsDataURL(f);
 }
 
 function showPrev(t,u){var i=document.getElementById(t+'Preview');var h=document.getElementById(t+'Pholder');i.src=u;i.style.display='block';h.style.display='none'}
@@ -305,29 +349,39 @@ async function delQ(id){
   loadQ();loadSets();
 }
 
-// ===== CSV =====
+// ===== CSV 导入 =====
 function openCSV(){
-  if(!document.getElementById('qSetFilter').value){alert('请先选择套装');return}
+  if(!document.getElementById('qSetFilter').value){alert('请先在套装下拉框中选择一个套装');return}
   document.getElementById('csvMod').classList.add('show');
 }
 
 async function doCSV(){
   var txt=document.getElementById('csvText').value.trim(); if(!txt){alert('请粘贴CSV内容');return}
   var sid=document.getElementById('qSetFilter').value;
+  if(!sid){alert('请先选择套装再导入');return}
   var lines=txt.split('\n').filter(function(l){return l.trim()});
-  var rows=[];
-  lines.forEach(function(line){
-    var p=parseCSV(line); if(p.length<4)return;
+  var rows=[],errors=[];
+  lines.forEach(function(line,i){
+    var p=parseCSV(line);
+    if(p.length<4){errors.push('第'+(i+1)+'行：格式错误，至少需要题目,题型,答案,1个选项（当前只有'+p.length+'列）');return}
     var title=p[0],ts=p[1],ans=p[2],type='single';
-    if(ts.indexOf('多')>-1)type='multi'; else if(ts.indexOf('判断')>-1)type='judge';
+    if(ts.indexOf('多')>-1)type='multi';
+    else if(ts.indexOf('判断')>-1)type='judge';
+    else if(ts.indexOf('单')>-1)type='single';
+    else{errors.push('第'+(i+1)+'行：题型"'+(ts.length>20?ts.substring(0,20)+'...':ts)+'"不识别，请写 单选/多选/判断');return}
+    if(!ans.trim()){errors.push('第'+(i+1)+'行：答案为空');return}
     var codes=type==='judge'?['A','B']:['A','B','C','D'];
     var opts=codes.map(function(c,i){return{code:c,content:(p[3+i]||'').trim(),value:ans.trim().indexOf(c)>-1?'1':'0'}});
+    var hasChecked=opts.some(function(o){return o.value==='1'});
+    if(!hasChecked){errors.push('第'+(i+1)+'行：答案"'+ans.trim()+'"与选项不匹配');return}
     rows.push({set_id:sid,title:title.trim(),type:type,options:opts,answer:ans.trim()});
   });
-  if(!rows.length){alert('未解析到有效题目');return}
+  if(errors.length){alert('解析发现 '+errors.length+' 个错误：\n\n'+errors.slice(0,5).join('\n')+(errors.length>5?'\n\n...还有 '+(errors.length-5)+' 条错误，仅显示前5条':''));}
+  if(!rows.length){alert('未解析到有效题目，请检查CSV格式');return}
+  if(errors.length && !confirm('有 '+errors.length+' 行解析失败将被跳过，导入 '+rows.length+' 条有效题目？'))return;
   var r=await supabase.from('questions').insert(rows);
-  if(r.error){alert('导入失败:'+r.error.message);return}
-  alert('成功导入'+rows.length+'道题');closeMod('csvMod');loadQ();loadSets();
+  if(r.error){alert('导入失败：'+r.error.message+'\n\n可能原因：题目内容过长或JSON格式异常');return}
+  alert('成功导入 '+rows.length+' 道题！');closeMod('csvMod');loadQ();loadSets();
 }
 
 function parseCSV(l){var r=[],c='',q=false;for(var i=0;i<l.length;i++){var ch=l[i];if(ch==='"'){q=!q}else if(ch===','&&!q){r.push(c);c=''}else{c+=ch}}r.push(c);return r}
