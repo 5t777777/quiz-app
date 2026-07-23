@@ -169,17 +169,12 @@ function doLogin(){
   var pwd = document.getElementById('loginPwd').value.trim();
   if(!pwd){document.getElementById('loginErr').textContent='请输入密码';return}
   if(pwd !== ADMIN_PWD){document.getElementById('loginErr').textContent='密码错误，请重试';return}
-  sessionStorage.setItem('_admin_login','1');
   document.getElementById('loginOverlay').style.display='none';
   document.getElementById('adminContent').style.display='';
   document.getElementById('loginPwd').value='';
 }
 
-// 检查是否已登录（本标签页有效期内）
-if(sessionStorage.getItem('_admin_login')==='1'){
-  document.getElementById('loginOverlay').style.display='none';
-  document.getElementById('adminContent').style.display='';
-}
+// 每次进入都必须登录，不做记住状态
 
 // ===== Supabase 初始化 =====
 var supabase = window.supabase.createClient(
