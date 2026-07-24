@@ -293,8 +293,12 @@ async function saveSet(){
   var id=document.getElementById('setId').value;
   var nm=document.getElementById('setName').value.trim();
   if(!nm){alert('请输入套装名称');return}
-  var d={name:nm,description:document.getElementById('setDesc').value.trim(),perfect_poster_url:document.getElementById('pfUrl').value.trim(),normal_poster_url:document.getElementById('nfUrl').value.trim()};
+  var pf=document.getElementById('pfUrl').value.trim();
+  var nf=document.getElementById('nfUrl').value.trim();
+  console.log('[saveSet] perfect_poster length='+pf.length+' normal_poster length='+nf.length);
+  var d={name:nm,description:document.getElementById('setDesc').value.trim(),perfect_poster_url:pf,normal_poster_url:nf};
   var r; if(id){r=await supabase.from('question_sets').update(d).eq('id',id)}else{r=await supabase.from('question_sets').insert(d).select()}
+  console.log('[saveSet] result error='+JSON.stringify(r.error));
   if(r.error){alert('保存失败:'+r.error.message);return}
   closeMod('setMod');loadSets();
 }
