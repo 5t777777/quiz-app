@@ -259,15 +259,31 @@ function closeMod(id){document.getElementById(id).classList.remove('show')}
 
 // 图片上传：转 Base64 直接存入数据库，不需要 Supabase Storage
 function uploadFile(t){
-  var f=document.getElementById(t+'File').files[0]; if(!f)return;
+  var finp=document.getElementById(t+'File');
+  console.log('[uploadFile] type='+t+' element='+!!finp);
+  var f=finp.files[0];
+  if(!f){
+    console.log('[uploadFile] no file selected');
+    return;
+  }
+  console.log('[uploadFile] file size='+f.size+' type='+f.type);
   if(f.size > 800000){alert('图片不能超过 800KB，建议压缩后再上传');return}
-  var reader=new FileReader();
-  reader.onload=function(e){
-    document.getElementById(t+'Url').value=e.target.result;
-    showPrev(t,e.target.result);
-  };
-  reader.onerror=function(){alert('图片读取失败，请重试')};
-  reader.readAsDataURL(f);
+  try{
+    var reader=new FileReader();
+    reader.onload=function(e){
+      console.log('[uploadFile] read done, length='+e.target.result.length);
+      document.getElementById(t+'Url').value=e.target.result;
+      showPrev(t,e.target.result);
+    };
+    reader.onerror=function(err){
+      console.log('[uploadFile] read error',err);
+      alert('图片读取失败，请重试');
+    };
+    reader.readAsDataURL(f);
+  }catch(e){
+    console.log('[uploadFile] exception',e);
+    alert('上传出错:'+(e.message||JSON.stringify(e)));
+  }
 }
 
 function showPrev(t,u){var i=document.getElementById(t+'Preview');var h=document.getElementById(t+'Pholder');i.src=u;i.style.display='block';h.style.display='none'}
