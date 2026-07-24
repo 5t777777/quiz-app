@@ -164,13 +164,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
   </div>
 </div>
 
-<script src="js/supabase-client.min.js"></script>
 <script>
+// 备用CDN：如果本地JS没加载，从多个CDN加载
+if(typeof window.supabase==='undefined'||typeof window.supabase.createClient!=='function'){
+  document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>');
+}
+
 // ===== Supabase 初始化 =====
 (function initApp(){
 var supabase;
 try{
-  if(!window.supabase){throw new Error('Supabase SDK 未加载，请刷新页面重试');}
+  if(!window.supabase||typeof window.supabase.createClient!=='function'){
+    throw new Error('Supabase SDK 未加载，请刷新页面重试');
+  }
   supabase=window.supabase.createClient('https://zhfstrwlgrbhudggsesz.supabase.co','sb_publishable_Q6exosUWFwf1g9Lpzo9ugw_ylZdznuG');
   if(!supabase||typeof supabase.from!=='function'){throw new Error('Supabase 初始化异常');}
 }catch(e){
