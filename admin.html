@@ -165,18 +165,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 </div>
 
 <script>
-// 备用CDN：如果本地JS没加载，从多个CDN加载
-if(typeof window.supabase==='undefined'||typeof window.supabase.createClient!=='function'){
-  document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>');
-}
-
 // ===== Supabase 初始化 =====
 (function initApp(){
+if(typeof window.supabase==='undefined'||typeof window.supabase.createClient!=='function'){
+  // 动态加载 Supabase SDK
+  var s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+  s.onload=initAppReal;
+  s.onerror=function(){document.getElementById('loginOverlay').innerHTML='<div class="login-box"><h2>⚠️ 网络错误</h2><p style="font-size:13px;color:#999;margin:12px 0">SDK 加载失败，请检查网络后刷新页面</p><button class="lbtn" onclick="location.reload()">刷新重试</button></div>';};
+  document.head.appendChild(s);
+  return;
+}
+initAppReal();
+
+function initAppReal(){
 var supabase;
 try{
-  if(!window.supabase||typeof window.supabase.createClient!=='function'){
-    throw new Error('Supabase SDK 未加载，请刷新页面重试');
-  }
   supabase=window.supabase.createClient('https://zhfstrwlgrbhudggsesz.supabase.co','sb_publishable_Q6exosUWFwf1g9Lpzo9ugw_ylZdznuG');
   if(!supabase||typeof supabase.from!=='function'){throw new Error('Supabase 初始化异常');}
 }catch(e){
@@ -413,8 +417,7 @@ async function loadRecs(){
   }).join('')||'<p style="color:#999;text-align:center;padding:30px">暂无记录</p>';
 }
 
-
-
+}})();
 </script>
 </body>
 </html>
