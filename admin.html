@@ -166,27 +166,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 
 <script src="js/supabase-client.min.js"></script>
 <script>
+// ===== Supabase 初始化 =====
+(function initApp(){
+var supabase;
+try{
+  if(!window.supabase){throw new Error('Supabase SDK 未加载，请刷新页面重试');}
+  supabase=window.supabase.createClient('https://zhfstrwlgrbhudggsesz.supabase.co','sb_publishable_Q6exosUWFwf1g9Lpzo9ugw_ylZdznuG');
+  if(!supabase||typeof supabase.from!=='function'){throw new Error('Supabase 初始化异常');}
+}catch(e){
+  document.getElementById('loginOverlay').innerHTML='<div class="login-box"><h2>⚠️ 加载失败</h2><p style="font-size:13px;color:#999;margin:12px 0">'+e.message+'</p><button class="lbtn" onclick="location.reload()">刷新重试</button></div>';
+  return;
+}
+
 // ===== 登录验证 =====
 var ADMIN_PWD = 'admin888';
-
-// 强制每次页面显示时都检查登录状态
-(function(){
-  // 隐藏管理内容
-  document.getElementById('adminContent').style.display='none';
-  // 显示登录遮罩
-  document.getElementById('loginOverlay').style.display='flex';
-
-  // 监听 bfcache 恢复 — 从浏览器后退恢复时重新锁定
-  window.addEventListener('pageshow', function(e){
-    if(e.persisted){
-      // bfcache 恢复，强制重新锁定
-      document.getElementById('adminContent').style.display='none';
-      document.getElementById('loginOverlay').style.display='flex';
-      document.getElementById('loginPwd').value='';
-      document.getElementById('loginErr').textContent='';
-    }
-  });
-})();
 
 function doLogin(){
   var pwd = document.getElementById('loginPwd').value.trim();
@@ -199,12 +192,6 @@ function doLogin(){
   // 首次登录时初始化数据
   if(!window._initDone){window._initDone=true;loadSets();loadSetOpts();}
 }
-
-// ===== Supabase 初始化 =====
-var supabase = window.supabase.createClient(
-  'https://zhfstrwlgrbhudggsesz.supabase.co',
-  'sb_publishable_Q6exosUWFwf1g9Lpzo9ugw_ylZdznuG'
-);
 
 // ===== Tabs =====
 document.querySelectorAll('.tabs button').forEach(function(b){
