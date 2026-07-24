@@ -122,6 +122,13 @@ function toggleDetail(){
 
 // 海报
 function genPoster(){
+  // 如果管理员上传了自定义海报，直接显示图片
+  var posterUrl = isPerfect ? perfectPoster : normalPoster;
+  if(posterUrl && posterUrl.length>50){
+    document.getElementById('pc').style.display='none';
+    document.getElementById('posterImg').src=posterUrl;
+    return;
+  }
   var c=document.getElementById('pc'),ctx=c.getContext('2d'),W=375,H=600;
   var grad=ctx.createLinearGradient(0,0,0,H);
   if(isPerfect){grad.addColorStop(0,'#FFF8E1');grad.addColorStop(1,'#FFE082')}
