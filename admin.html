@@ -158,7 +158,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 <div class="modal" id="csvMod">
   <div class="box">
     <h2>📤 CSV批量导入</h2>
-    <div class="csvh">每行一题：<code>题目,题型,答案,选项A,选项B,选项C,选项D</code><br>题型写<code>单选/多选/判断</code>，答案写<code>B</code>或<code>AB</code><br>举例：<code>微信是哪年上线的？,单选,B,2012年,2011年,2013年,2014年</code></div>
+    <div class="csvh">每行一题，格式：<code>题目,题型,答案,选项A,选项B,选项C,选项D</code><br>题型写<code>单选/多选/判断</code>，答案写<code>B</code>或<code>AB</code><br>如果题目内容本身包含逗号，请用英文双引号把题目包起来，如：<code>"徒步时，遇到野生动物应该怎么做？",单选,B,跑,慢慢退,拍照,投喂</code></div>
     <textarea class="txa csva" id="csvText" placeholder="微信是哪年上线的？,单选,B,2012年,2011年,2013年,2014年"></textarea>
     <div class="acts"><button class="btn btn-s" onclick="closeMod('csvMod')">取消</button><button class="btn btn-g" onclick="doCSV()">导入</button></div>
   </div>
