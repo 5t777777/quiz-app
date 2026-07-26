@@ -48,7 +48,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .bottom button{width:100%;padding:14px;border:none;border-radius:12px;font-size:16px;background:#1bcfad;color:#fff;cursor:pointer}
 .bottom button:active{transform:scale(.97)}
 
-canvas#pc{display:none}
+canvas#posterCanvas{display:none}
 </style>
 </head>
 <body>
@@ -72,7 +72,7 @@ canvas#pc{display:none}
 
 <div class="poster-wrap" id="posterWrap">
   <h3>🏆 我的荣誉海报</h3>
-  <canvas id="pc" width="375" height="600"></canvas>
+  <canvas id="posterCanvas" width="375" height="600"></canvas>
   <img id="posterImg" src="" alt="海报">
   <p class="tips">长按海报图片保存到相册</p>
   <div class="poster-btns">
@@ -125,11 +125,11 @@ function genPoster(){
   // 如果管理员上传了自定义海报，直接显示图片
   var posterUrl = isPerfect ? perfectPoster : normalPoster;
   if(posterUrl && posterUrl.length>50){
-    document.getElementById('pc').style.display='none';
+    document.getElementById('posterCanvas').style.display='none';
     document.getElementById('posterImg').src=posterUrl;
     return;
   }
-  var c=document.getElementById('pc'),ctx=c.getContext('2d'),W=375,H=600;
+  var c=document.getElementById('posterCanvas'),ctx=c.getContext('2d'),W=375,H=600;
   var grad=ctx.createLinearGradient(0,0,0,H);
   if(isPerfect){grad.addColorStop(0,'#FFF8E1');grad.addColorStop(1,'#FFE082')}
   else{grad.addColorStop(0,'#E8F5E9');grad.addColorStop(1,'#A5D6A7')}
