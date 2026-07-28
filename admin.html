@@ -267,14 +267,23 @@ function uploadFile(t){
     return;
   }
   var f=fileInput.files[0];
-  if(f.size > 800000){alert('图片不能超过 800KB，建议压缩后再上传');return}
-  var reader=new FileReader();
-  reader.onload=function(e){
-    document.getElementById(t+'Url').value=e.target.result;
-    showPrev(t,e.target.result);
+  // 用 Canvas 压缩到 750px 宽，quality 0.6，控制 Base64 大小
+  var img=new Image();
+  var u=URL.createObjectURL(f);
+  img.onload=function(){
+    URL.revokeObjectURL(u);
+    var maxW=750,maxH=1300;
+    var w=img.width,h=img.height;
+    if(w>maxW){h=h*maxW/w;w=maxW}
+    if(h>maxH){w=w*maxH/h;h=maxH}
+    var c=document.createElement('canvas');c.width=w;c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);
+    var base64=c.toDataURL('image/jpeg',0.6);
+    document.getElementById(t+'Url').value=base64;
+    showPrev(t,base64);
   };
-  reader.onerror=function(){alert('图片读取失败，请重试')};
-  reader.readAsDataURL(f);
+  img.onerror=function(){alert('图片加载失败，请重试')};
+  img.src=u;
 }
 
 function showPrev(t,u){var i=document.getElementById(t+'Preview');var h=document.getElementById(t+'Pholder');i.src=u;i.style.display='block';h.style.display='none'}
