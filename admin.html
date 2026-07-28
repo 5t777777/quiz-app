@@ -190,7 +190,7 @@ try{
   if(!supabase||typeof supabase.from!=='function'){throw new Error('Supabase 初始化异常');}
 }catch(e){
   document.getElementById('loginOverlay').innerHTML='<div class="login-box"><h2>⚠️ 加载失败</h2><p style="font-size:13px;color:#999;margin:12px 0">'+e.message+'</p><button class="lbtn" onclick="location.reload()">刷新重试</button></div>';
-  return;
+  supabase = null;
 }
 
 // ===== 登录验证 =====
