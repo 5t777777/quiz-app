@@ -419,9 +419,11 @@ async function doCSV(){
   if(errors.length){alert('解析发现 '+errors.length+' 个错误：\n\n'+errors.slice(0,5).join('\n')+(errors.length>5?'\n\n...还有 '+(errors.length-5)+' 条错误，仅显示前5条':''));}
   if(!rows.length){alert('未解析到有效题目，请检查CSV格式');return}
   if(errors.length && !confirm('有 '+errors.length+' 行解析失败将被跳过，导入 '+rows.length+' 条有效题目？'))return;
-  var r=await supabase.from('questions').insert(rows);
-  if(r.error){alert('导入失败：'+r.error.message+'\n\n可能原因：题目内容过长或JSON格式异常');return}
-  alert('成功导入 '+rows.length+' 道题！');closeMod('csvMod');loadQ();loadSets();
+  try{
+    var r=await supabase.from('questions').insert(rows);
+    if(r&&r.error){alert('导入失败：'+r.error.message+'\n\n可能原因：题目内容过长或JSON格式异常');return}
+    alert('成功导入 '+rows.length+' 道题！');closeMod('csvMod');loadQ();loadSets();
+  }catch(e){alert('导入出错：'+e.message+'\n请确认已选择套装且网络正常');console.error(e)}
 }
 
 function parseCSV(l){var r=[],c='',q=false;for(var i=0;i<l.length;i++){var ch=l[i];if(ch==='"'){q=!q}else if(ch===','&&!q){r.push(c);c=''}else{c+=ch}}r.push(c);return r}
