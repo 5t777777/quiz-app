@@ -79,6 +79,10 @@ async function startQuiz(){
   var qRes = await supabase.from('questions').select('*').eq('set_id', pick.id);
   if (!qRes.data || !qRes.data.length) { toast('该题库下暂无题目'); return; }
   var safeQ = qRes.data.map(function(q) { var o = Object.assign({}, q); delete o.answer; return o; });
+  // 清除上一次答题的提交标记，避免 quiz.html 立即跳回 result.html
+  sessionStorage.removeItem('_submitted');
+  sessionStorage.removeItem('_result');
+  sessionStorage.removeItem('_answers');
   sessionStorage.setItem('quizData', JSON.stringify({
     setId: pick.id, setName: pick.name,
     perfectPoster: pick.perfect_poster_url, normalPoster: pick.normal_poster_url,
