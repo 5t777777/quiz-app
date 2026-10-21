@@ -73,7 +73,7 @@ async function loadStats(){
 }
 
 async function startQuiz(){
-  var setsRes = await supabase.from('question_sets').select('*');
+  var setsRes = await supabase.from('question_sets').select('*').eq('module','general');
   if (!setsRes.data || !setsRes.data.length) { toast('暂无题库，请先上传题目'); return; }
   var pick = setsRes.data[Math.floor(Math.random() * setsRes.data.length)];
   var qRes = await supabase.from('questions').select('*').eq('set_id', pick.id);

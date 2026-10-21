@@ -30,6 +30,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .btn-xs{padding:4px 12px;font-size:12px}
 .tag{display:inline-block;padding:2px 9px;border-radius:4px;font-size:11px}
 .tag-g{background:rgba(27,207,173,.12);color:#1bcfad}
+.tag-y{background:rgba(76,175,80,.15);color:#2E7D32}
 .fld{margin-bottom:12px}.fld label{font-size:12px;color:#666;display:block;margin-bottom:3px}
 
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
@@ -129,7 +130,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
     <h2 id="setTitle">创建新套装</h2>
     <input type="hidden" id="setId">
     <div class="fld"><label>套装名称 *</label><input class="inp" id="setName" placeholder="例：2024期中考试"></div>
+    <div class="fld"><label>所属模块 *</label>
+      <select class="sel" id="setModule" onchange="toggleModuleFields()">
+        <option value="general">通用模块（普通人群）</option>
+        <option value="youth">青少年模块</option>
+      </select></div>
     <div class="fld"><label>描述</label><textarea class="txa" id="setDesc" placeholder="可选"></textarea></div>
+    <div id="posterFields">
     <div class="fld"><label>🏆 满分海报（可选 · 图片转存数据库）</label>
       <div class="up" onclick="document.getElementById('pfFile').click()"><img id="pfPreview" src="" style="display:none"><span id="pfPholder">点击上传图片</span></div>
       <input type="file" id="pfFile" accept="image/*" style="display:none" onchange="uploadFile('pf')">
@@ -138,6 +145,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
       <div class="up" onclick="document.getElementById('nfFile').click()"><img id="nfPreview" src="" style="display:none"><span id="nfPholder">点击上传图片</span></div>
       <input type="file" id="nfFile" accept="image/*" style="display:none" onchange="uploadFile('nf')">
       <input type="hidden" id="nfUrl"></div>
+    </div>
+    <div id="scienceFields" style="display:none">
+      <div class="fld"><label>🌱 科普图片（青少年模块专用）</label>
+        <div class="up" onclick="document.getElementById('siFile').click()"><img id="siPreview" src="" style="display:none"><span id="siPholder">点击上传图片</span></div>
+        <input type="file" id="siFile" accept="image/*" style="display:none" onchange="uploadFile('si')">
+        <input type="hidden" id="siUrl"></div>
+      <div class="fld"><label>📖 科普文字（≤400字 · 青少年模块专用）</label>
+        <textarea class="txa" id="setScienceText" maxlength="400" placeholder="答题结束后统一展示的科普内容" oninput="updateSciCount()"></textarea>
+        <div style="font-size:11px;color:#999;text-align:right;margin-top:2px"><span id="sciCount">0</span>/400</div></div>
+    </div>
     <div class="acts"><button class="btn btn-s" onclick="closeMod('setMod')">取消</button><button class="btn btn-g" onclick="saveSet()">保存</button></div>
   </div>
 </div>
@@ -228,7 +245,12 @@ function alert(m){window.alert(m)}
 async function loadSets(){
   var r=await supabase.from('question_sets').select('*').order('created_at',{ascending:false});
   document.getElementById('setGrid').innerHTML=(r.data||[]).map(function(s){
-    return '<div class="card"><div class="nm">'+s.name+'</div><div class="ds">'+(s.description||'')+(s.perfect_poster_url?' · 🏆满分海报':'')+(s.normal_poster_url?' · 👏鼓励海报':'')+'</div><div class="btns"><button class="btn btn-xs btn-s" onclick="editSet(\''+s.id+'\')">编辑</button><button class="btn btn-xs btn-r" onclick="delSet(\''+s.id+'\')">删除</button></div></div>';
+    var isYouth=(s.module==='youth');
+    var tag=isYouth?'<span class="tag tag-y">🌱 青少年</span>':'<span class="tag tag-g">通用</span>';
+    var extra=isYouth
+      ?((s.science_image?' · 🌱科普图':'')+(s.science_text?' · 📖科普文':''))
+      :((s.perfect_poster_url?' · 🏆满分海报':'')+(s.normal_poster_url?' · 👏鼓励海报':''));
+    return '<div class="card"><div class="nm">'+tag+' '+s.name+'</div><div class="ds">'+(s.description||'')+extra+'</div><div class="btns"><button class="btn btn-xs btn-s" onclick="editSet(\''+s.id+'\')">编辑</button><button class="btn btn-xs btn-r" onclick="delSet(\''+s.id+'\')">删除</button></div></div>';
   }).join('')||'<p style="color:#999;text-align:center;padding:40px">暂无套装</p>';
 }
 
@@ -240,18 +262,26 @@ function openSet(id){
       document.getElementById('setId').value=d.id;
       document.getElementById('setName').value=d.name;
       document.getElementById('setDesc').value=d.description||'';
+      document.getElementById('setModule').value=d.module||'general';
       document.getElementById('pfUrl').value=d.perfect_poster_url||'';
       document.getElementById('nfUrl').value=d.normal_poster_url||'';
+      document.getElementById('siUrl').value=d.science_image||'';
+      document.getElementById('setScienceText').value=d.science_text||'';
       if(d.perfect_poster_url)showPrev('pf',d.perfect_poster_url);else hidePrev('pf');
       if(d.normal_poster_url)showPrev('nf',d.normal_poster_url);else hidePrev('nf');
+      if(d.science_image)showPrev('si',d.science_image);else hidePrev('si');
+      toggleModuleFields();updateSciCount();
     });
   }else{
     document.getElementById('setTitle').textContent='创建新套装';
     document.getElementById('setId').value='';
     document.getElementById('setName').value='';
     document.getElementById('setDesc').value='';
+    document.getElementById('setModule').value='general';
     document.getElementById('pfUrl').value=''; document.getElementById('nfUrl').value='';
-    hidePrev('pf');hidePrev('nf');
+    document.getElementById('siUrl').value=''; document.getElementById('setScienceText').value='';
+    hidePrev('pf');hidePrev('nf');hidePrev('si');
+    toggleModuleFields();updateSciCount();
   }
   document.getElementById('setMod').classList.add('show');
 }
@@ -289,14 +319,39 @@ function uploadFile(t){
 function showPrev(t,u){var i=document.getElementById(t+'Preview');var h=document.getElementById(t+'Pholder');i.src=u;i.style.display='block';h.style.display='none'}
 function hidePrev(t){var i=document.getElementById(t+'Preview');var h=document.getElementById(t+'Pholder');i.src='';i.style.display='none';h.style.display='block'}
 
+// 切换模块时显示/隐藏对应字段
+function toggleModuleFields(){
+  var m=document.getElementById('setModule').value;
+  document.getElementById('scienceFields').style.display=(m==='youth')?'':'none';
+  document.getElementById('posterFields').style.display=(m==='youth')?'none':'';
+}
+
+// 科普文字字数统计
+function updateSciCount(){
+  var el=document.getElementById('setScienceText');
+  document.getElementById('sciCount').textContent=el.value.length;
+}
+
 async function saveSet(){
   if(!supabase){alert('系统加载中，请刷新页面后重试');return}
   var id=document.getElementById('setId').value;
   var nm=document.getElementById('setName').value.trim();
   if(!nm){alert('请输入套装名称');return}
+  var md=document.getElementById('setModule').value;
   var pf=document.getElementById('pfUrl').value.trim();
   var nf=document.getElementById('nfUrl').value.trim();
-  var d={name:nm,description:document.getElementById('setDesc').value.trim(),perfect_poster_url:pf,normal_poster_url:nf};
+  var si=document.getElementById('siUrl').value.trim();
+  var st=document.getElementById('setScienceText').value.trim();
+  if(st.length>400){alert('科普文字不能超过 400 字（当前 '+st.length+' 字）');return}
+  var d={
+    name:nm,
+    description:document.getElementById('setDesc').value.trim(),
+    module:md,
+    perfect_poster_url:(md==='youth'?'':pf),
+    normal_poster_url:(md==='youth'?'':nf),
+    science_image:(md==='youth'?si:''),
+    science_text:(md==='youth'?st:'')
+  };
   try{
     var r; if(id){r=await supabase.from('question_sets').update(d).eq('id',id)}else{r=await supabase.from('question_sets').insert(d).select()}
     if(r&&r.error){alert('保存失败: '+r.error.message);return}

@@ -84,8 +84,11 @@ var supabase = window.supabase.createClient(
 </script>
 <script>
 // 防止提交后返回修改
+var _qd0={};
+try{_qd0=JSON.parse(sessionStorage.getItem('quizData')||'{}')}catch(e){}
+var _resultPage=(_qd0.module==='youth')?'youth-result.html':'result.html';
 if(sessionStorage.getItem('_submitted')==='1'){
-  location.replace('result.html');
+  location.replace(_resultPage);
 }
 
 var questions=JSON.parse(sessionStorage.getItem('_fullQuestions')||'[]');
@@ -185,10 +188,12 @@ async function submit(){
 
   sessionStorage.setItem('_result',JSON.stringify({
     score:score,isPerfect:isPerfect,totalNum:total,rightNum:right,wrongNum:wrong,
-    setName:quizData.setName,perfectPoster:quizData.perfectPoster,normalPoster:quizData.normalPoster,details:details
+    setName:quizData.setName,perfectPoster:quizData.perfectPoster,normalPoster:quizData.normalPoster,
+    module:quizData.module||'general',scienceImage:quizData.scienceImage||'',scienceText:quizData.scienceText||'',
+    details:details
   }));
   sessionStorage.setItem('_submitted','1');
-  location.href='result.html';
+  location.href=_resultPage;
 }
 
 function toast(m){var e=document.getElementById('toast');e.textContent=m;e.classList.add('show');setTimeout(function(){e.classList.remove('show')},2000)}
@@ -196,7 +201,7 @@ function toast(m){var e=document.getElementById('toast');e.textContent=m;e.class
 // 阻止通过浏览器后退返回答题
 window.addEventListener('pageshow',function(e){
   if(e.persisted && sessionStorage.getItem('_submitted')==='1'){
-    location.replace('result.html');
+    location.replace(_resultPage);
   }
 });
 

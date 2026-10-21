@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>青少年答题结果</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:#f5f5f5;color:#333}
+
+.score-area{text-align:center;padding:40px 20px 30px;background:linear-gradient(180deg,#E8F5E9,#C8E6C9)}
+.circle{width:120px;height:120px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 12px;background:linear-gradient(135deg,#2E7D32,#43A047)}
+.circle .n{font-size:44px;font-weight:700;color:#fff;line-height:1}
+.circle .u{font-size:14px;color:rgba(255,255,255,.85)}
+.emoji{font-size:30px;margin-bottom:6px}
+.rtitle{font-size:20px;font-weight:600}
+.rsub{font-size:13px;color:#555;margin-top:4px}
+
+.stats-row{display:flex;gap:8px;padding:0 20px;margin-top:-16px;margin-bottom:20px}
+.stats-row .s{flex:1;background:#fff;border-radius:12px;padding:14px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.s .sn{font-size:26px;font-weight:700}
+.s .sl{font-size:11px;color:#999}
+.sn.grn{color:#4CAF50}.sn.red{color:#f44336}
+
+.detail-wrap{padding:0 20px;margin-bottom:20px}
+.detail-wrap .dh{background:#fff;border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;font-size:14px;font-weight:500;cursor:pointer}
+.di{background:#fff;border-radius:12px;padding:14px;margin-top:8px;border-left:4px solid #4CAF50}
+.di.wrong{border-left-color:#f44336}
+.di .dr{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.di .dt{font-size:14px;line-height:1.5;margin-bottom:6px}
+.di .da{font-size:12px;color:#999}
+.di .da .c{color:#4CAF50;font-weight:600}
+.di .da .w{color:#f44336;font-weight:600}
+
+.science-wrap{padding:0 20px;margin-bottom:20px}
+.science-wrap .card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.science-wrap h3{font-size:16px;margin-bottom:12px;color:#2E7D32;display:flex;align-items:center;gap:6px}
+.science-wrap img{width:100%;border-radius:12px;display:block;margin-bottom:14px}
+.science-text{font-size:15px;line-height:1.85;color:#444;white-space:pre-wrap;word-break:break-word}
+.science-text .empty{color:#bbb;font-size:13px}
+.tips{font-size:11px;color:#aaa;text-align:center;margin-top:10px}
+.poster-btns{display:flex;gap:8px;margin-top:14px}
+.poster-btns button{flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;cursor:pointer}
+.poster-btns .save{background:#1bcfad;color:#fff}
+.poster-btns .share{background:#fff;border:2px solid #1bcfad;color:#1bcfad}
+.poster-btns button:active{transform:scale(.97)}
+
+.bottom{padding:0 20px 40px}
+.bottom button{width:100%;padding:14px;border:none;border-radius:12px;font-size:16px;background:#1bcfad;color:#fff;cursor:pointer}
+.bottom button:active{transform:scale(.97)}
+</style>
+</head>
+<body>
+
+<div class="score-area" id="scoreArea">
+  <div class="circle"><span class="n" id="scoreNum">0</span><span class="u">分</span></div>
+  <div class="emoji" id="emoji"></div>
+  <div class="rtitle" id="rtitle"></div>
+  <div class="rsub" id="rsub"></div>
+</div>
+
+<div class="stats-row">
+  <div class="s"><span class="sn" id="totalN">0</span><span class="sl">总题数</span></div>
+  <div class="s"><span class="sn grn" id="rightN">0</span><span class="sl">答对</span></div>
+  <div class="s"><span class="sn red" id="wrongN">0</span><span class="sl">答错</span></div>
+</div>
+
+<div class="science-wrap" id="scienceWrap">
+  <div class="card">
+    <h3>🌱 科普知识</h3>
+    <img id="scienceImg" src="" alt="科普图片" style="display:none">
+    <div class="science-text" id="scienceText"></div>
+    <div class="poster-btns" id="imgBtns" style="display:none">
+      <button class="save" onclick="downloadImg()">💾 保存图片</button>
+      <button class="share" onclick="share()">📤 分享</button>
+    </div>
+  </div>
+</div>
+
+<div class="detail-wrap">
+  <div class="dh" onclick="toggleDetail()"><span>📋 答题详情</span><span id="dArrow">▶</span></div>
+  <div id="dList" style="display:none"></div>
+</div>
+
+<div class="bottom"><button onclick="retry()">再来一次</button></div>
+
+<script>
+var r = JSON.parse(sessionStorage.getItem('_result') || '{}');
+var score = r.score || 0, isPerfect = r.isPerfect, total = r.totalNum || 0;
+var right = r.rightNum || 0, wrong = r.wrongNum || 0;
+var setName = r.setName || '', details = r.details || [];
+var scienceImage = r.scienceImage || '', scienceText = r.scienceText || '';
+
+// 防止直接访问结果页
+if (!r.score && r.totalNum === undefined) {
+  location.replace('youth.html');
+}
+
+// 分数展示
+document.getElementById('scoreNum').textContent = score;
+document.getElementById('emoji').textContent = isPerfect ? '🎉' : '💪';
+document.getElementById('rtitle').textContent = isPerfect ? '太棒了，全部答对！' : '完成答题！';
+document.getElementById('rsub').textContent = isPerfect ? '你已经是自然小卫士啦' : '继续加油，一起保护大自然';
+document.getElementById('totalN').textContent = total;
+document.getElementById('rightN').textContent = right;
+document.getElementById('wrongN').textContent = wrong;
+
+// 科普内容（无论是否满分都统一展示）
+(function () {
+  var img = document.getElementById('scienceImg');
+  if (scienceImage && scienceImage.length > 50) {
+    img.src = scienceImage;
+    img.style.display = 'block';
+    document.getElementById('imgBtns').style.display = 'flex';
+  }
+  var box = document.getElementById('scienceText');
+  if (scienceText && scienceText.trim()) {
+    box.textContent = scienceText;
+  } else {
+    box.innerHTML = '<span class="empty">该套题的科普内容尚未设置</span>';
+  }
+})();
+
+// 答题详情
+var dHTML = '';
+details.forEach(function (d, i) {
+  var correctDisplay = d.correctAnswer;
+  var userDisplay = Array.isArray(d.userAnswer) ? d.userAnswer.join(', ') : (d.userAnswer || '未作答');
+  if (d.type === 'judge') {
+    correctDisplay = d.correctAnswer === 'A' ? '正确' : '错误';
+    userDisplay = d.userAnswer === 'A' ? '正确' : (d.userAnswer === 'B' ? '错误' : userDisplay);
+  }
+  dHTML += '<div class="di' + (d.isCorrect ? '' : ' wrong') + '">' +
+    '<div class="dr"><span style="color:#999">第' + (i + 1) + '题</span>' +
+    '<span style="font-weight:600;color:' + (d.isCorrect ? '#4CAF50' : '#f44336') + '">' +
+    (d.isCorrect ? '✓正确' : '✗错误') + '</span></div>' +
+    '<div class="dt">' + d.title + '</div>' +
+    '<div class="da">正确答案：<span class="c">' + correctDisplay + '</span></div>' +
+    (d.isCorrect ? '' : '<div class="da">你的答案：<span class="w">' + userDisplay + '</span></div>') +
+    '</div>';
+});
+document.getElementById('dList').innerHTML = dHTML;
+
+function toggleDetail() {
+  var l = document.getElementById('dList'), a = document.getElementById('dArrow');
+  if (l.style.display === 'none') { l.style.display = 'block'; a.textContent = '▼'; }
+  else { l.style.display = 'none'; a.textContent = '▶'; }
+}
+
+function downloadImg() {
+  var src = document.getElementById('scienceImg').src;
+  if (!src) { alert('暂无图片可保存'); return; }
+  var a = document.createElement('a');
+  a.download = '科普图片.png';
+  a.href = src;
+  a.click();
+}
+
+function share() {
+  if (navigator.share) {
+    navigator.share({ title: '答题结果', text: '我在「' + setName + '」中获得了' + score + '分！', url: location.origin });
+  } else {
+    alert('点击右上角分享');
+  }
+}
+
+function retry() {
+  sessionStorage.removeItem('_submitted');
+  sessionStorage.removeItem('_result');
+  sessionStorage.removeItem('_answers');
+  location.href = 'youth.html';
+}
+</script>
+</body>
+</html>
