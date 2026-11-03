@@ -70,7 +70,8 @@ var supabase = window.supabase.createClient(
 // 防止提交后返回修改
 var _qd0={};
 try{_qd0=JSON.parse(sessionStorage.getItem('quizData')||'{}')}catch(e){}
-var _resultPage=(_qd0.module==='youth')?'youth-result.html':'result.html';
+var _SCIENCE_MODULES=['youth','popular','scenic','trail'];
+var _resultPage=(_SCIENCE_MODULES.indexOf(_qd0.module)>-1)?'youth-result.html':'result.html';
 if(sessionStorage.getItem('_submitted')==='1'){
   location.replace(_resultPage);
 }

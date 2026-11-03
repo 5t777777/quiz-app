@@ -98,6 +98,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
     <button class="on" data-panel="sets">📦 套装管理</button>
     <button data-panel="questions">📝 题目管理</button>
     <button data-panel="records">📊 答题记录</button>
+    <button data-panel="links">🔗 链接生成</button>
   </div>
 
   <!-- 套装管理 -->
@@ -122,6 +123,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
   <div class="panel" id="panel-records">
     <div class="card" id="recordList" style="max-height:70vh;overflow-y:auto"></div>
   </div>
+
+  <!-- 链接生成 -->
+  <div class="panel" id="panel-links">
+    <div class="card">
+      <p style="font-size:13px;color:#666;line-height:1.7;margin-bottom:14px">每个模块对应一个独立答题入口链接，可分别分享给不同人群。链接指向统一的 <code>entry.html</code>，通过 <code>?module=</code> 区分。</p>
+      <div class="fld"><label>选择模块</label>
+        <select class="sel" id="linkModule">
+          <option value="general">通用模块（普通人群）</option>
+          <option value="youth">青少年模块</option>
+          <option value="popular">大众版</option>
+          <option value="scenic">景区版</option>
+          <option value="trail">越野赛版本</option>
+        </select>
+      </div>
+      <div class="row"><button class="btn btn-g" onclick="genLink()">🔗 生成链接</button></div>
+      <div id="linkResult" style="display:none">
+        <div class="fld"><label>答题链接（复制后分享给用户）</label>
+          <input class="inp" id="linkOut" readonly onclick="this.select()">
+        </div>
+        <div class="row">
+          <button class="btn btn-g" onclick="copyLink()">📋 复制链接</button>
+          <button class="btn btn-s" onclick="window.open(document.getElementById('linkOut').value,'_blank')">↗ 打开预览</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- 套装弹窗 -->
@@ -134,6 +161,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
       <select class="sel" id="setModule" onchange="toggleModuleFields()">
         <option value="general">通用模块（普通人群）</option>
         <option value="youth">青少年模块</option>
+        <option value="popular">大众版</option>
+        <option value="scenic">景区版</option>
+        <option value="trail">越野赛版本</option>
       </select></div>
     <div class="fld"><label>描述</label><textarea class="txa" id="setDesc" placeholder="可选"></textarea></div>
     <div id="posterFields">
@@ -147,11 +177,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
       <input type="hidden" id="nfUrl"></div>
     </div>
     <div id="scienceFields" style="display:none">
-      <div class="fld"><label>🌱 科普图片（青少年模块专用）</label>
+      <div class="fld"><label>🌱 科普图片（青少年/大众版/景区版/越野赛版本专用）</label>
         <div class="up" onclick="document.getElementById('siFile').click()"><img id="siPreview" src="" style="display:none"><span id="siPholder">点击上传图片</span></div>
         <input type="file" id="siFile" accept="image/*" style="display:none" onchange="uploadFile('si')">
         <input type="hidden" id="siUrl"></div>
-      <div class="fld"><label>📖 科普文字（≤400字 · 青少年模块专用）</label>
+      <div class="fld"><label>📖 科普文字（≤400字 · 科普模块专用）</label>
         <textarea class="txa" id="setScienceText" maxlength="400" placeholder="答题结束后统一展示的科普内容" oninput="updateSciCount()"></textarea>
         <div style="font-size:11px;color:#999;text-align:right;margin-top:2px"><span id="sciCount">0</span>/400</div></div>
     </div>
@@ -224,13 +254,27 @@ document.querySelectorAll('.tabs button').forEach(function(b){
 
 function alert(m){window.alert(m)}
 
+// ===== 模块配置 =====
+var SCIENCE_MODULES=['youth','popular','scenic','trail'];
+var MODULE_TAGS={
+  general:{c:'tag-g',t:'通用',e:'📝'},
+  youth:{c:'tag-y',t:'青少年',e:'🌱'},
+  popular:{c:'tag-y',t:'大众版',e:'🏖️'},
+  scenic:{c:'tag-y',t:'景区版',e:'🏞️'},
+  trail:{c:'tag-y',t:'越野赛版本',e:'🏃'}
+};
+function moduleTag(m){
+  var o=MODULE_TAGS[m]||MODULE_TAGS.general;
+  return '<span class="tag '+o.c+'">'+o.e+' '+o.t+'</span>';
+}
+
 // ===== 套装 =====
 async function loadSets(){
   var r=await supabase.from('question_sets').select('*').order('created_at',{ascending:false});
   document.getElementById('setGrid').innerHTML=(r.data||[]).map(function(s){
-    var isYouth=(s.module==='youth');
-    var tag=isYouth?'<span class="tag tag-y">🌱 青少年</span>':'<span class="tag tag-g">通用</span>';
-    var extra=isYouth
+    var isSci=(SCIENCE_MODULES.indexOf(s.module)>-1);
+    var tag=moduleTag(s.module);
+    var extra=isSci
       ?((s.science_image?' · 🌱科普图':'')+(s.science_text?' · 📖科普文':''))
       :((s.perfect_poster_url?' · 🏆满分海报':'')+(s.normal_poster_url?' · 👏鼓励海报':''));
     return '<div class="card"><div class="nm">'+tag+' '+s.name+'</div><div class="ds">'+(s.description||'')+extra+'</div><div class="btns"><button class="btn btn-xs btn-s" onclick="editSet(\''+s.id+'\')">编辑</button><button class="btn btn-xs btn-r" onclick="delSet(\''+s.id+'\')">删除</button></div></div>';
@@ -305,8 +349,9 @@ function hidePrev(t){var i=document.getElementById(t+'Preview');var h=document.g
 // 切换模块时显示/隐藏对应字段
 function toggleModuleFields(){
   var m=document.getElementById('setModule').value;
-  document.getElementById('scienceFields').style.display=(m==='youth')?'':'none';
-  document.getElementById('posterFields').style.display=(m==='youth')?'none':'';
+  var isSci=(SCIENCE_MODULES.indexOf(m)>-1);
+  document.getElementById('scienceFields').style.display=isSci?'':'none';
+  document.getElementById('posterFields').style.display=isSci?'none':'';
 }
 
 // 科普文字字数统计
@@ -326,14 +371,15 @@ async function saveSet(){
   var si=document.getElementById('siUrl').value.trim();
   var st=document.getElementById('setScienceText').value.trim();
   if(st.length>400){alert('科普文字不能超过 400 字（当前 '+st.length+' 字）');return}
+  var isSci=(SCIENCE_MODULES.indexOf(md)>-1);
   var d={
     name:nm,
     description:document.getElementById('setDesc').value.trim(),
     module:md,
-    perfect_poster_url:(md==='youth'?'':pf),
-    normal_poster_url:(md==='youth'?'':nf),
-    science_image:(md==='youth'?si:''),
-    science_text:(md==='youth'?st:'')
+    perfect_poster_url:(isSci?'':pf),
+    normal_poster_url:(isSci?'':nf),
+    science_image:(isSci?si:''),
+    science_text:(isSci?st:'')
   };
   try{
     var r; if(id){r=await supabase.from('question_sets').update(d).eq('id',id)}else{r=await supabase.from('question_sets').insert(d).select()}
@@ -472,6 +518,34 @@ async function loadRecs(){
   document.getElementById('recordList').innerHTML=(r.data||[]).map(function(rc){
     return'<div class="rec"><div><div style="font-weight:600">'+rc.set_name+'</div><div style="font-size:11px;color:#999">'+new Date(rc.created_at).toLocaleString()+' · '+rc.right_num+'/'+rc.total_num+'正确</div></div><div class="sn'+(rc.is_perfect?' pf':'')+'">'+rc.score+'</div></div>';
   }).join('')||'<p style="color:#999;text-align:center;padding:30px">暂无记录</p>';
+}
+
+// ===== 链接生成 =====
+function genLink(){
+  var m=document.getElementById('linkModule').value;
+  var base=location.href.substring(0,location.href.lastIndexOf('/')+1);
+  var link=base+'entry.html?module='+m;
+  document.getElementById('linkOut').value=link;
+  document.getElementById('linkResult').style.display='';
+}
+
+function copyLink(){
+  var v=document.getElementById('linkOut').value;
+  if(!v){return}
+  var done=function(){alert('已复制到剪贴板：\n'+v)};
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(v).then(done,function(){fallbackCopy(v);done();});
+  }else{
+    fallbackCopy(v);done();
+  }
+}
+
+function fallbackCopy(v){
+  var t=document.createElement('textarea');
+  t.value=v;t.style.position='fixed';t.style.opacity='0';
+  document.body.appendChild(t);t.focus();t.select();
+  try{document.execCommand('copy')}catch(e){}
+  document.body.removeChild(t);
 }
 
 </script>

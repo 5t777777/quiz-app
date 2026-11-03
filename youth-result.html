@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>青少年答题结果</title>
+<title>答题结果</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:#f5f5f5;color:#333}
@@ -93,7 +93,7 @@ var scienceImage = r.scienceImage || '', scienceText = r.scienceText || '';
 
 // 防止直接访问结果页
 if (!r.score && r.totalNum === undefined) {
-  location.replace('youth.html');
+  location.replace('entry.html?module=' + (r.module || 'youth'));
 }
 
 // 分数展示
@@ -168,7 +168,7 @@ function retry() {
   sessionStorage.removeItem('_submitted');
   sessionStorage.removeItem('_result');
   sessionStorage.removeItem('_answers');
-  location.href = 'youth.html';
+  location.href = 'entry.html?module=' + (r.module || 'youth');
 }
 </script>
 </body>
