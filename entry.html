@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <link rel="preconnect" href="https://zhfstrwlgrbhudggsesz.supabase.co" crossorigin>
 <link rel="dns-prefetch" href="https://zhfstrwlgrbhudggsesz.supabase.co">
 <title>答题助手</title>
@@ -88,7 +91,7 @@ function loadBank(){
   if(bankTried) return Promise.resolve(bankCache);
   bankTried = true;
   if(!window.fetch) return Promise.resolve(null);
-  return fetch('data/'+module+'.json')
+  return fetch('data/'+module+'.json', {cache:'no-cache'})
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(list){
       bankCache = Array.isArray(list) ? list.filter(function(s){ return s.questions && s.questions.length; }) : null;
