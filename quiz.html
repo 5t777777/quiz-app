@@ -168,10 +168,13 @@ async function submit(){
 
   var total=questions.length,score=Math.round(right/total*100),isPerfect=score===100;
 
-  await supabase.from('quiz_records').insert({
-    set_id:quizData.setId,set_name:quizData.setName,
-    score:score,is_perfect:isPerfect,right_num:right,wrong_num:wrong,total_num:total,details:details
-  });
+  // 记录上传不阻塞出分：网络不通时（国内手机常见）也照常跳结果页
+  try{
+    supabase.from('quiz_records').insert({
+      set_id:quizData.setId,set_name:quizData.setName,
+      score:score,is_perfect:isPerfect,right_num:right,wrong_num:wrong,total_num:total,details:details
+    }).then(function(){},function(){});
+  }catch(e){ /* 忽略记录失败 */ }
 
   sessionStorage.setItem('_result',JSON.stringify({
     score:score,isPerfect:isPerfect,totalNum:total,rightNum:right,wrongNum:wrong,

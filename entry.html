@@ -79,13 +79,57 @@ document.getElementById('title').textContent = cfg.title;
 document.getElementById('sub').textContent = cfg.sub;
 document.title = cfg.title;
 
+// ===== 题库加载：优先读站点本地 data/<module>.json =====
+// 这样手机端完全不依赖 supabase.co（国内网络常连不上），秒开；
+// 本地文件缺失时才回退到 Supabase 实时查询。
+var bankCache = null, bankTried = false;
+
+function loadBank(){
+  if(bankTried) return Promise.resolve(bankCache);
+  bankTried = true;
+  if(!window.fetch) return Promise.resolve(null);
+  return fetch('data/'+module+'.json')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(list){
+      bankCache = Array.isArray(list) ? list.filter(function(s){ return s.questions && s.questions.length; }) : null;
+      return bankCache;
+    })
+    ['catch'](function(){ return null; });
+}
+
+// 本地文件不存在时的兜底：走 Supabase（老逻辑）
+async function loadFromSupabase(){
+  var list=await supabase.from('question_sets').select('id,name,questions(count)').eq('module',module);
+  if(list.error) throw new Error('网络无法连接题库（'+list.error.message+'）');
+  var usable=(list.data||[]).filter(function(s){return s.questions&&s.questions[0]&&s.questions[0].count>0});
+  if(!usable.length) return null;
+  var pick=usable[Math.floor(Math.random()*usable.length)];
+  var cols = cfg.science ? 'science_image,science_text' : 'perfect_poster_url,normal_poster_url';
+  var res=await supabase.from('question_sets')
+    .select('id,name,'+cols+',questions(id,type,title,answer,options)')
+    .eq('id',pick.id).single();
+  if(res.error) throw new Error('网络无法连接题库（'+res.error.message+'）');
+  return (res.data && res.data.questions && res.data.questions.length) ? res.data : null;
+}
+
 async function loadStats(){
-  var r=await supabase.from('question_sets').select('id,questions(count)').eq('module',module);
-  var sets=r.data||[];
-  var qc=0;
-  sets.forEach(function(s){ if(s.questions&&s.questions[0]) qc+=s.questions[0].count||0; });
-  document.getElementById('setCount').textContent=sets.length;
-  document.getElementById('qCount').textContent=qc;
+  var bank=await loadBank();
+  if(bank){
+    var qc=0; bank.forEach(function(s){ qc+=s.questions.length; });
+    document.getElementById('setCount').textContent=bank.length;
+    document.getElementById('qCount').textContent=qc;
+    return;
+  }
+  try{
+    var r=await supabase.from('question_sets').select('id,questions(count)').eq('module',module);
+    var sets=r.data||[], n=0;
+    sets.forEach(function(s){ if(s.questions&&s.questions[0]) n+=s.questions[0].count||0; });
+    document.getElementById('setCount').textContent=sets.length;
+    document.getElementById('qCount').textContent=n;
+  }catch(e){
+    document.getElementById('setCount').textContent='-';
+    document.getElementById('qCount').textContent='-';
+  }
 }
 
 async function startQuiz(){
@@ -93,18 +137,15 @@ async function startQuiz(){
   var oldTxt=btn.textContent;
   btn.disabled=true;btn.style.opacity='.7';btn.textContent='⏳ 正在加载题目...';
   try{
-    // 第一步：只取套装骨架（含题目数量），数据量极小
-    var list=await supabase.from('question_sets').select('id,name,questions(count)').eq('module',module);
-    var usable=(list.data||[]).filter(function(s){return s.questions&&s.questions[0]&&s.questions[0].count>0});
-    if(!usable.length){toast('暂无题库，请先上传题目');return}
-    var pick=usable[Math.floor(Math.random()*usable.length)];
-    // 第二步：只取选中这一套的完整数据（科普模块取科普字段，通用模块取海报字段）
-    var cols = cfg.science ? 'science_image,science_text' : 'perfect_poster_url,normal_poster_url';
-    var res=await supabase.from('question_sets')
-      .select('id,name,'+cols+',questions(id,type,title,answer,options)')
-      .eq('id',pick.id).single();
-    if(!res.data||!res.data.questions||!res.data.questions.length){toast('题库下暂无题目');return}
-    var d=res.data, qs=d.questions;
+    var d=null;
+    var bank=await loadBank();
+    if(bank && bank.length){
+      d=bank[Math.floor(Math.random()*bank.length)];
+    }else{
+      d=await loadFromSupabase();
+      if(!d){toast('暂无题库，请先在后台添加题目');return}
+    }
+    var qs=d.questions;
     var safeQ=qs.map(function(q){var o=Object.assign({},q);delete o.answer;return o;});
     sessionStorage.removeItem('_submitted');
     sessionStorage.removeItem('_result');
@@ -120,7 +161,7 @@ async function startQuiz(){
     sessionStorage.setItem('_fullQuestions',JSON.stringify(qs));
     location.href='quiz.html';
   }catch(e){
-    toast('加载失败，请检查网络后重试');
+    toast('加载失败：'+(e&&e.message?e.message:'请检查网络后重试'));
   }finally{
     btn.disabled=false;btn.style.opacity='';btn.textContent=oldTxt;
   }
@@ -129,7 +170,7 @@ async function startQuiz(){
 function toast(m) {
   var e = document.getElementById('toast');
   e.textContent = m; e.classList.add('show');
-  setTimeout(function() { e.classList.remove('show'); }, 2000);
+  setTimeout(function() { e.classList.remove('show'); }, 4000);
 }
 
 loadStats();
