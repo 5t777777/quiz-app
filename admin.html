@@ -34,6 +34,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .fld{margin-bottom:12px}.fld label{font-size:12px;color:#666;display:block;margin-bottom:3px}
 
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.ghead{display:flex;align-items:center;gap:8px;margin:20px 0 10px;padding-left:10px;border-left:4px solid #1bcfad;font-size:14px;font-weight:600;color:#333}
+.ghead .cnt{font-size:11px;font-weight:400;color:#999}
+.ghead:first-child{margin-top:0}
 .grid .nm{font-size:16px;font-weight:600;margin-bottom:2px}
 .grid .ds{font-size:12px;color:#999;margin-bottom:8px}
 .grid .btns{display:flex;gap:6px;flex-wrap:wrap}
@@ -104,7 +107,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
   <!-- 套装管理 -->
   <div class="panel on" id="panel-sets">
     <div class="row"><button class="btn btn-g" onclick="openSet()">+ 创建新套装</button></div>
-    <div class="grid" id="setGrid"></div>
+    <div id="setGrid"></div>
   </div>
 
   <!-- 题目管理 -->
@@ -275,17 +278,45 @@ function moduleTag(m){
   return '<span class="tag '+o.c+'">'+o.e+' '+o.t+'</span>';
 }
 
+// 模块固定顺序 + 套题按 1、2、3…10 自然排序
+var MODULE_ORDER=['general','youth','popular','scenic','trail'];
+function natCmp(a,b){
+  return String(a||'').localeCompare(String(b||''),'zh-Hans-CN',{numeric:true,sensitivity:'base'});
+}
+function orderSets(sets){
+  return (sets||[]).slice().sort(function(a,b){
+    var ia=MODULE_ORDER.indexOf(a.module), ib=MODULE_ORDER.indexOf(b.module);
+    if(ia<0)ia=99; if(ib<0)ib=99;
+    if(ia!==ib) return ia-ib;
+    return natCmp(a.name,b.name);
+  });
+}
+function groupByModule(sets){
+  var groups=[];
+  orderSets(sets).forEach(function(s){
+    var key=s.module||'general';
+    var g=groups[groups.length-1];
+    if(!g||g.key!==key){g={key:key,label:(MODULE_TAGS[key]||MODULE_TAGS.general).t,icon:(MODULE_TAGS[key]||MODULE_TAGS.general).e,items:[]};groups.push(g)}
+    g.items.push(s);
+  });
+  return groups;
+}
+
 // ===== 套装 =====
 async function loadSets(){
-  var r=await supabase.from('question_sets').select('*').order('created_at',{ascending:false});
-  document.getElementById('setGrid').innerHTML=(r.data||[]).map(function(s){
-    var isSci=(SCIENCE_MODULES.indexOf(s.module)>-1);
-    var tag=moduleTag(s.module);
-    var extra=isSci
-      ?((s.science_image?' · 🌱科普图':'')+(s.science_text?' · 📖科普文':''))
-      :((s.perfect_poster_url?' · 🏆满分海报':'')+(s.normal_poster_url?' · 👏鼓励海报':''));
-    return '<div class="card"><div class="nm">'+tag+' '+s.name+'</div><div class="ds">'+(s.description||'')+extra+'</div><div class="btns"><button class="btn btn-xs btn-s" onclick="editSet(\''+s.id+'\')">编辑</button><button class="btn btn-xs btn-r" onclick="delSet(\''+s.id+'\')">删除</button></div></div>';
-  }).join('')||'<p style="color:#999;text-align:center;padding:40px">暂无套装</p>';
+  var r=await supabase.from('question_sets').select('*');
+  var sets=r.data||[];
+  if(!sets.length){document.getElementById('setGrid').innerHTML='<p style="color:#999;text-align:center;padding:40px">暂无套装</p>';return}
+  document.getElementById('setGrid').innerHTML=groupByModule(sets).map(function(g){
+    var cards=g.items.map(function(s){
+      var isSci=(SCIENCE_MODULES.indexOf(s.module)>-1);
+      var extra=isSci
+        ?((s.science_image?' · 🌱科普图':'')+(s.science_text?' · 📖科普文':''))
+        :((s.perfect_poster_url?' · 🏆满分海报':'')+(s.normal_poster_url?' · 👏鼓励海报':''));
+      return '<div class="card"><div class="nm">'+s.name+'</div><div class="ds">'+(s.description||'')+extra+'</div><div class="btns"><button class="btn btn-xs btn-s" onclick="editSet(\''+s.id+'\')">编辑</button><button class="btn btn-xs btn-r" onclick="delSet(\''+s.id+'\')">删除</button></div></div>';
+    }).join('');
+    return '<div class="ghead">'+g.icon+' '+g.label+'<span class="cnt">'+g.items.length+' 套</span></div><div class="grid">'+cards+'</div>';
+  }).join('');
 }
 
 function openSet(id){
@@ -404,8 +435,14 @@ async function delSet(id){
 
 // ===== 题目 =====
 async function loadSetOpts(){
-  var r=await supabase.from('question_sets').select('id,name');
-  document.getElementById('qSetFilter').innerHTML='<option value="">选择套装</option>'+(r.data||[]).map(function(s){return'<option value="'+s.id+'">'+s.name+'</option>'}).join('');
+  var r=await supabase.from('question_sets').select('id,name,module');
+  var h='<option value="">选择套装</option>';
+  groupByModule(r.data||[]).forEach(function(g){
+    h+='<optgroup label="'+g.icon+' '+g.label+'">'+
+      g.items.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>'}).join('')+
+      '</optgroup>';
+  });
+  document.getElementById('qSetFilter').innerHTML=h;
 }
 
 async function loadQ(){
@@ -539,18 +576,25 @@ async function loadRecs(){
       ['catch'](function(){ return -1; });
   }));
 
-  var rows=sets.map(function(s,i){ return {name:s.name,module:s.module,n:counts[i]}; });
-  rows.sort(function(a,b){ return (b.n<0?-1:b.n)-(a.n<0?-1:a.n); });
+  var rows=sets.map(function(s,i){ return {id:s.id,name:s.name,module:s.module,n:counts[i]}; });
 
   var total=0, failed=false;
   rows.forEach(function(r){ if(r.n>0)total+=r.n; if(r.n<0)failed=true; });
 
-  box.innerHTML='<table class="tbl"><thead><tr><th width="8%">#</th><th>套装名称</th><th width="16%">模块</th><th width="18%" style="text-align:right">答题人数</th></tr></thead><tbody>'+
-    rows.map(function(r,i){
+  var h='<table class="tbl"><thead><tr><th width="8%">#</th><th>套装名称</th><th width="16%">模块</th><th width="18%" style="text-align:right">答题人数</th></tr></thead><tbody>';
+  groupByModule(rows).forEach(function(g){
+    var gTotal=0;
+    g.items.forEach(function(r){ if(r.n>0)gTotal+=r.n; });
+    h+='<tr><td colspan="4" style="background:#f5f9f8;padding:10px 12px;font-size:13px;font-weight:600;color:#333;border-bottom:1px solid #e8f0ee">'+
+       g.icon+' '+g.label+'<span style="font-weight:400;color:#999;font-size:11px;margin-left:8px">'+g.items.length+' 套 · 共 '+gTotal+' 人次</span></td></tr>';
+    g.items.forEach(function(r,i){
       var n=r.n<0?'<span style="color:#e74c3c">读取失败</span>':(r.n===0?'<span style="color:#ccc">0</span>':'<strong style="color:#1bcfad;font-size:16px">'+r.n+'</strong>');
-      return '<tr><td style="color:#999">'+(i+1)+'</td><td style="font-weight:500">'+r.name+'</td><td>'+moduleTag(r.module)+'</td><td style="text-align:right">'+n+'</td></tr>';
-    }).join('')+
-    '</tbody></table>';
+      h+='<tr><td style="color:#999">'+(i+1)+'</td><td style="font-weight:500">'+r.name+'</td><td>'+moduleTag(r.module)+'</td><td style="text-align:right">'+n+'</td></tr>';
+    });
+  });
+  h+='</tbody></table>';
+
+  box.innerHTML=h;
 
   document.getElementById('recTotal').textContent='累计 '+total+' 人次'+(failed?'（部分读取失败）':'');
   document.getElementById('recTime').textContent=new Date().toLocaleTimeString();
