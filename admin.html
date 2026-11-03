@@ -97,7 +97,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
   <div class="tabs">
     <button class="on" data-panel="sets">📦 套装管理</button>
     <button data-panel="questions">📝 题目管理</button>
-    <button data-panel="records">📊 答题记录</button>
+    <button data-panel="records">📊 答题统计</button>
     <button data-panel="links">🔗 链接生成</button>
   </div>
 
@@ -121,6 +121,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 
   <!-- 记录 -->
   <div class="panel" id="panel-records">
+    <div class="card" style="padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
+      <div><span style="font-size:14px;font-weight:600">📊 每套题答题人数</span><span id="recTotal" style="font-size:12px;color:#999;margin-left:10px"></span></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="recTime" style="font-size:11px;color:#aaa"></span>
+        <button class="btn btn-xs btn-s" onclick="loadRecs()">刷新</button>
+      </div>
+    </div>
     <div class="card" id="recordList" style="max-height:70vh;overflow-y:auto"></div>
   </div>
 
@@ -248,7 +255,7 @@ document.querySelectorAll('.tabs button').forEach(function(b){
     document.getElementById('panel-'+t).classList.add('on');
     if(t==='sets')loadSets();
     if(t==='questions'){loadSetOpts().then(function(){loadQ()})}
-    if(t==='records')loadRecs();
+    if(t==='records'){loadRecs();startRecTimer()}else{stopRecTimer()}
   }
 });
 
@@ -512,13 +519,51 @@ async function doCSV(){
 
 function parseCSV(l){var r=[],c='',q=false;for(var i=0;i<l.length;i++){var ch=l[i];if(ch==='"'){q=!q}else if(ch===','&&!q){r.push(c);c=''}else{c+=ch}}r.push(c);return r}
 
-// ===== 记录 =====
+// ===== 答题统计：每套题汇总答题人数 =====
+var _recTimer=null;
+
 async function loadRecs(){
-  var r=await supabase.from('quiz_records').select('*').order('created_at',{ascending:false}).limit(50);
-  document.getElementById('recordList').innerHTML=(r.data||[]).map(function(rc){
-    return'<div class="rec"><div><div style="font-weight:600">'+rc.set_name+'</div><div style="font-size:11px;color:#999">'+new Date(rc.created_at).toLocaleString()+' · '+rc.right_num+'/'+rc.total_num+'正确</div></div><div class="sn'+(rc.is_perfect?' pf':'')+'">'+rc.score+'</div></div>';
-  }).join('')||'<p style="color:#999;text-align:center;padding:30px">暂无记录</p>';
+  var box=document.getElementById('recordList');
+  var setsR=await supabase.from('question_sets').select('id,name,module').order('created_at',{ascending:false});
+  if(setsR.error){
+    box.innerHTML='<p style="color:#e74c3c;text-align:center;padding:30px">读取失败：'+setsR.error.message+'</p>';
+    return;
+  }
+  var sets=setsR.data||[];
+  if(!sets.length){box.innerHTML='<p style="color:#999;text-align:center;padding:30px">暂无套装</p>';return}
+
+  // 对每套题做一次 count 查询（HEAD，只取总数不取数据），开销很小
+  var counts=await Promise.all(sets.map(function(s){
+    return supabase.from('quiz_records').select('id',{count:'exact',head:true}).eq('set_id',s.id)
+      .then(function(r){ return (r&&typeof r.count==='number')?r.count:(r&&r.error?-1:0); })
+      ['catch'](function(){ return -1; });
+  }));
+
+  var rows=sets.map(function(s,i){ return {name:s.name,module:s.module,n:counts[i]}; });
+  rows.sort(function(a,b){ return (b.n<0?-1:b.n)-(a.n<0?-1:a.n); });
+
+  var total=0, failed=false;
+  rows.forEach(function(r){ if(r.n>0)total+=r.n; if(r.n<0)failed=true; });
+
+  box.innerHTML='<table class="tbl"><thead><tr><th width="8%">#</th><th>套装名称</th><th width="16%">模块</th><th width="18%" style="text-align:right">答题人数</th></tr></thead><tbody>'+
+    rows.map(function(r,i){
+      var n=r.n<0?'<span style="color:#e74c3c">读取失败</span>':(r.n===0?'<span style="color:#ccc">0</span>':'<strong style="color:#1bcfad;font-size:16px">'+r.n+'</strong>');
+      return '<tr><td style="color:#999">'+(i+1)+'</td><td style="font-weight:500">'+r.name+'</td><td>'+moduleTag(r.module)+'</td><td style="text-align:right">'+n+'</td></tr>';
+    }).join('')+
+    '</tbody></table>';
+
+  document.getElementById('recTotal').textContent='累计 '+total+' 人次'+(failed?'（部分读取失败）':'');
+  document.getElementById('recTime').textContent=new Date().toLocaleTimeString();
 }
+
+// 停留在统计页时每 20 秒自动刷新
+function startRecTimer(){
+  stopRecTimer();
+  _recTimer=setInterval(function(){
+    if(document.getElementById('panel-records').classList.contains('on')) loadRecs();
+  },20000);
+}
+function stopRecTimer(){ if(_recTimer){clearInterval(_recTimer);_recTimer=null} }
 
 // ===== 链接生成 =====
 function genLink(){
