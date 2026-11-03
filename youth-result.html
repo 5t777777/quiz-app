@@ -41,6 +41,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .science-wrap img{width:100%;border-radius:12px;display:block;margin-bottom:14px}
 .science-text{font-size:15px;line-height:1.85;color:#444;white-space:pre-wrap;word-break:break-word}
 .science-text .empty{color:#bbb;font-size:13px}
+.save-hint{font-size:11px;color:#aaa;text-align:center;margin:-6px 0 12px}
 .tips{font-size:11px;color:#aaa;text-align:center;margin-top:10px}
 .poster-btns{display:flex;gap:8px;margin-top:14px}
 .poster-btns button{flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;cursor:pointer}
@@ -72,11 +73,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
   <div class="card">
     <h3>🌱 科普知识</h3>
     <img id="scienceImg" src="" alt="科普图片" style="display:none">
+    <div class="save-hint" id="saveHint" style="display:none">长按图片可保存到手机</div>
     <div class="science-text" id="scienceText"></div>
-    <div class="poster-btns" id="imgBtns" style="display:none">
-      <button class="save" onclick="downloadImg()">💾 保存图片</button>
-      <button class="share" onclick="share()">📤 分享</button>
-    </div>
   </div>
 </div>
 
@@ -94,9 +92,13 @@ var right = r.rightNum || 0, wrong = r.wrongNum || 0;
 var setName = r.setName || '', details = r.details || [];
 var scienceImage = r.scienceImage || '', scienceText = r.scienceText || '';
 
+// 本次答题所属模块：优先取入口页写入的 _module，其次 _result，最后兜底
+var MY_MODULE = 'popular';
+try{ MY_MODULE = sessionStorage.getItem('_module') || r.module || 'popular'; }catch(e){}
+
 // 防止直接访问结果页
 if (!r.score && r.totalNum === undefined) {
-  location.replace('entry.html?module=' + (r.module || 'youth'));
+  location.replace('entry.html?module=' + MY_MODULE);
 }
 
 // 分数展示
@@ -111,10 +113,10 @@ document.getElementById('wrongN').textContent = wrong;
 // 科普内容（无论是否满分都统一展示）
 (function () {
   var img = document.getElementById('scienceImg');
-  if (scienceImage && scienceImage.length > 50) {
+  if (scienceImage && scienceImage.length > 20) {
     img.src = scienceImage;
     img.style.display = 'block';
-    document.getElementById('imgBtns').style.display = 'flex';
+    document.getElementById('saveHint').style.display = 'block';
   }
   var box = document.getElementById('scienceText');
   if (scienceText && scienceText.trim()) {
@@ -150,28 +152,12 @@ function toggleDetail() {
   else { l.style.display = 'none'; a.textContent = '▶'; }
 }
 
-function downloadImg() {
-  var src = document.getElementById('scienceImg').src;
-  if (!src) { alert('暂无图片可保存'); return; }
-  var a = document.createElement('a');
-  a.download = '科普图片.png';
-  a.href = src;
-  a.click();
-}
-
-function share() {
-  if (navigator.share) {
-    navigator.share({ title: '答题结果', text: '我在「' + setName + '」中获得了' + score + '分！', url: location.origin });
-  } else {
-    alert('点击右上角分享');
-  }
-}
-
 function retry() {
   sessionStorage.removeItem('_submitted');
   sessionStorage.removeItem('_result');
   sessionStorage.removeItem('_answers');
-  location.href = 'entry.html?module=' + (r.module || 'youth');
+  sessionStorage.removeItem('_fullQuestions');
+  location.href = 'entry.html?module=' + MY_MODULE;
 }
 </script>
 </body>

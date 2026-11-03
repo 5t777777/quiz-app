@@ -162,13 +162,24 @@ async function startQuiz(){
     var d=null;
     var bank=await loadBank();
     if(bank && bank.length){
-      d=bank[Math.floor(Math.random()*bank.length)];
+      // 再来一次时优先避开刚做过的那套，保证“换一套题”
+      var pool=bank, last=null;
+      try{ last=sessionStorage.getItem('_lastSet'); }catch(e){}
+      if(last && bank.length>1){
+        var rest=bank.filter(function(s){ return s.id!==last; });
+        if(rest.length) pool=rest;
+      }
+      d=pool[Math.floor(Math.random()*pool.length)];
     }else{
       d=await loadFromSupabase();
       if(!d){toast('暂无题库，请先在后台添加题目');return}
     }
     var qs=d.questions;
     var safeQ=qs.map(function(q){var o=Object.assign({},q);delete o.answer;return o;});
+    try{
+      sessionStorage.setItem('_module',module);
+      sessionStorage.setItem('_lastSet',d.id);
+    }catch(e){}
     sessionStorage.removeItem('_submitted');
     sessionStorage.removeItem('_result');
     sessionStorage.removeItem('_answers');
