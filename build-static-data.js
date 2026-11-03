@@ -64,6 +64,11 @@ async function main() {
     const qc = out.reduce((n, s) => n + s.questions.length, 0);
     console.log(`${m}: ${out.length} 套 / ${qc} 题 → data/${m}.json (${(fs.statSync(file).size / 1024).toFixed(1)}KB)`);
   }
+
+  // 版本号：entry.html 用它判断页面是否过期（GitHub Pages 会缓存 HTML 最多 10 分钟）
+  const build = new Date().toISOString().replace(/[-:T.]/g, "").slice(0, 14);
+  fs.writeFileSync(path.join(OUT_DIR, "version.json"), JSON.stringify({ build }));
+  console.log("版本号:", build, "→ data/version.json");
 }
 
 main().catch(e => { console.error("导出失败:", e.message); process.exit(1); });

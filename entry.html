@@ -82,6 +82,25 @@ document.getElementById('title').textContent = cfg.title;
 document.getElementById('sub').textContent = cfg.sub;
 document.title = cfg.title;
 
+// ===== 版本自检：页面被浏览器缓存成旧版时，自动用新地址重载一次 =====
+// GitHub Pages 的 HTML 最多缓存 10 分钟，这段逻辑让用户不用手动清缓存
+(function(){
+  if(!window.fetch) return;
+  try{
+    fetch('data/version.json',{cache:'no-cache'})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){
+        if(!v || !v.build) return;
+        var seen=null;
+        try{ seen=localStorage.getItem('__lnt_build'); localStorage.setItem('__lnt_build',v.build); }catch(e){ return; }
+        if(seen && seen!==v.build && location.search.indexOf('&v=')<0){
+          location.replace('entry.html?module='+module+'&v='+v.build);
+        }
+      })
+      ['catch'](function(){});
+  }catch(e){}
+})();
+
 // ===== 题库加载：优先读站点本地 data/<module>.json =====
 // 这样手机端完全不依赖 supabase.co（国内网络常连不上），秒开；
 // 本地文件缺失时才回退到 Supabase 实时查询。
