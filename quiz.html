@@ -83,7 +83,9 @@ var curIdx=0;
 if(!questions.length){document.body.innerHTML='<div style="text-align:center;padding-top:80px"><p>题目数据异常</p><a href="index.html">返回首页</a></div>'}
 
 var quizData=JSON.parse(sessionStorage.getItem('quizData')||'{}');
-document.getElementById('setName').textContent=quizData.setName||'';
+// 页面标题统一显示「LNT答题·xx版」，不显示具体套题名
+var MODULE_TITLE={general:'LNT答题·通用版',youth:'LNT答题·青少年版',popular:'LNT答题·大众版',scenic:'LNT答题·景区版',trail:'LNT答题·越野赛版'};
+document.getElementById('setName').textContent=MODULE_TITLE[quizData.module]||quizData.setName||'答题';
 document.getElementById('totalNum').textContent=questions.length;
 
 function renderQ(){
